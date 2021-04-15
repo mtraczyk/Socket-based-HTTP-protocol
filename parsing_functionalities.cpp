@@ -10,5 +10,5 @@ bool HTTPRequestParser::isALineParsed() const {
 }
 
 std::string const &HTTPRequestParser::getFullyParsedLine() const {
-  return <#initializer#>;
+#warning It needs to be done.
 }

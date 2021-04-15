@@ -15,7 +15,7 @@ class HTTPRequestParser {
     HTTPRequestParser() = default;
     void parsePartOfARequest(std::string &);
     bool isALineParsed() const;
-    std::string const& getFullyParsedLine() const;
+    std::string const &getFullyParsedLine() const;
     ~HTTPRequestParser() = default;
   private:
     std::string currentLine;
