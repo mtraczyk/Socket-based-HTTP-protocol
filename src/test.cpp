@@ -1,79 +1,18 @@
-#include "function_maxima.h"
 #include "gtest/gtest.h"
+#include <regex>
+
+namespace HTTP2RequestPatterns {
+  using std::regex;
+
+  regex requestLineGET("(GET)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
+  regex requestLineHEAD("(HEAD)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
+  regex headerConnectionDefault("(Connection):(\\s)*");
+  regex headerConnectionClose("(Connection):(\\s)*(close)(\\s)*");
+  regex contentLength("(Content-Length):(\\s)*(0)(\\s)*");
+}
 
 TEST (SquareTest /*test suite name*/, PosZeroNeg /*test name*/) {
-  FunctionMaxima<int, int> a = FunctionMaxima<int, int>();
-  FunctionMaxima<int, int> b = FunctionMaxima<int, int>(a);
-  FunctionMaxima<int, char> c = FunctionMaxima<int, char>();
-
-  b = a;
-
-  //std::cout << "!!!!" << std::endl;
-
-  b.set_value(3, 5);
-  std::cout << b.value_at(3) << std::endl;
-
-  b.set_value(4, 8);
-  b.set_value(7, 6);
-  b.set_value(1, 2);
-
-  for (const auto &p : b) {
-    std::cout << p.arg() << " -> " << p.value() << std::endl;
-  }
-
-  std::cout << std::endl;
-
-  for (auto it = b.mx_begin(); it != b.mx_end(); it++) {
-    std::cout << (*it).arg() << " -> " << (*it).value() << std::endl;
-  }
-
-  b.erase(3);
-
-  std::cout << std::endl;
-
-  b.set_value(3, 4);
-  b.set_value(1, 9);
-  b.set_value(1, 9);
-  b.set_value(1, 8);
-  b.set_value(3, 8);
-  b.set_value(11, 11);
-  b.set_value(10, 10);
-  b.set_value(11, 9);
-
-  b.erase(10);
-
-  std::cout << b.value_at(3) << std::endl;
-
-  for (const auto &p : b) {
-    std::cout << p.arg() << " -> " << p.value() << std::endl;
-  }
-
-  std::cout << std::endl;
-
-  for (auto it = b.mx_begin(); it != b.mx_end(); it++) {
-    std::cout << (*it).arg() << " -> " << (*it).value() << std::endl;
-  }
-
-  auto aux = b.find(3);
-
-  std::cout << std::endl;
-  for (auto it = aux; it != b.end(); it++) {
-    std::cout << (*it).arg() << " -> " << (*it).value() << std::endl;
-  }
-
-  auto d(b);
-
-  std::cout << std::endl;
-  for (const auto &p : d) {
-    std::cout << p.arg() << " -> " << p.value() << std::endl;
-  }
-
-  //  a.value_at(3);
-
-  //  EXPECT_EQ (9.0, (3.0 * 2.0)); // fail, test continues
-  //  ASSERT_EQ (0.0, (0.0));     // success
-  //  ASSERT_EQ (9, (3) * (-3.0));  // fail, test interrupts
-//    ASSERT_EQ (-9, (-3) * (-3.0));// not executed due to the previous assert
+  assert(std::regex_match("Connection:   close  ", HTTP2RequestPatterns::headerConnectionClose));
 }
 
 /*

@@ -4,15 +4,23 @@
 
 constexpr static int32_t firstIndexOfAString = 0;
 
-void parseRequestLine(HTTPRequestParser *requestParserInstance, std::string const &requestPart) {
+void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) {
 
 }
 
 void lineIsParsed(HTTPRequestParser *requestParserInstance) {
-  if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLine)) {
+  requestParserInstance->lineParsed = true;
 
-  } else {
-
+  if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLineGET)) {
+    parseRequestLine(requestParserInstance, HTTPRequestParser::requestGET);
+  } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLineHEAD)) {
+    parseRequestLine(requestParserInstance, HTTPRequestParser::requestHEAD);
+  } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::headerConnectionClose)) {
+    requestParserInstance->errorOccurred =
+      ((requestParserInstance->connection) ? true : requestParserInstance->errorOccurred);
+    requestParserInstance->connection = HTTPRequestParser::connectionClose;
+  } else if (!std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::contentLength)) {
+    requestParserInstance->errorOccurred = true;
   }
 
   requestParserInstance->currentLine.clear();
@@ -20,20 +28,22 @@ void lineIsParsed(HTTPRequestParser *requestParserInstance) {
 
 void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
   nextPartOfARequest += requestPart;
-  int32_t positionOfNewLine = nextPartOfARequest.find('\n', nextPartOfARequestsIndexPosition);
+  int32_t positionOfEndLine = nextPartOfARequest.find('\n', nextPartOfARequestsIndexPosition);
   int32_t positionOfCarriageReturn = nextPartOfARequest.find('\r', nextPartOfARequestsIndexPosition);
 
-  if (positionOfNewLine == std::string::npos && positionOfCarriageReturn == std::string::npos) {
+  if (positionOfEndLine == std::string::npos && positionOfCarriageReturn == std::string::npos) {
     prepareForParsingNextLine();
   } else {
     int32_t splitPosition = std::min(
-      ((positionOfNewLine != std::string::npos) ? positionOfNewLine : nextPartOfARequest.size()),
+      ((positionOfEndLine != std::string::npos) ? positionOfEndLine : nextPartOfARequest.size()),
       ((positionOfCarriageReturn != std::string::npos) ? positionOfCarriageReturn : nextPartOfARequest.size()));
 
-    currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition, splitPosition - 1);
+    if (nextPartOfARequestsIndexPosition != splitPosition) {
+      currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition, splitPosition - 1);
+      CRLFBlockSize = 1;
+    }
 
     nextPartOfARequestsIndexPosition = splitPosition;
-    CRLFBlockSize = 1;
     while (nextPartOfARequest[nextPartOfARequestsIndexPosition] == '\n'
            || nextPartOfARequest[nextPartOfARequestsIndexPosition] == '\r') {
       nextPartOfARequestsIndexPosition++;
@@ -57,7 +67,10 @@ void HTTPRequestParser::prepareForParsingNextLine() noexcept {
   currentLine = nextPartOfARequest.substr(nextPartOfARequestsIndexPosition);
   nextPartOfARequest.clear();
   nextPartOfARequestsIndexPosition = 0;
-  CRLFBlockSize = 0;
+
+  if (!currentLine.empty()) {
+    CRLFBlockSize = 0;
+  }
 }
 
 void HTTPRequestParser::reset() noexcept {
@@ -67,4 +80,8 @@ void HTTPRequestParser::reset() noexcept {
   errorOccurred = false;
   nextPartOfARequestsIndexPosition = 0;
   CRLFBlockSize = 0;
+  requestType = 0;
+  requestType = 0;
+  connection = 0;
+  contentLengthDifferentThanZero = false;
 }
