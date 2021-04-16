@@ -4,36 +4,43 @@
 
 constexpr static int32_t firstIndexOfAString = 0;
 
-void lineIsParsed(HTTPRequestParser *requestParserInstance, int32_t splitPosition, std::string const &requestPart) {
-  requestParserInstance->lineParsed = true;
-  requestParserInstance->currentLine += requestPart.substr(firstIndexOfAString, splitPosition);
-  requestParserInstance->nextPartOfARequest = requestPart.substr(splitPosition);
+void parseRequestLine(HTTPRequestParser *requestParserInstance, std::string const &requestPart) {
+
 }
 
-void parseRequestLine(HTTPRequestParser *requestParserInstance, std::string const &requestPart) {
-  int32_t positionOfNewLine = requestPart.find('\n');
-  int32_t positionOfCarriageReturn = requestPart.find('\r');
+void lineIsParsed(HTTPRequestParser *requestParserInstance) {
+  if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLine)) {
 
-  if (positionOfNewLine == std::string::npos && positionOfCarriageReturn == std::string::npos) {
-    requestParserInstance->currentLine += requestPart;
   } else {
-    int32_t splitPosition = std::min(
-      ((positionOfNewLine != std::string::npos) ? positionOfNewLine : requestPart.size()),
-      ((positionOfCarriageReturn != std::string::npos) ? positionOfCarriageReturn : requestPart.size()));
 
-    lineIsParsed(requestParserInstance, splitPosition, requestPart);
-
-    if (!std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLine)) {
-      requestParserInstance->lineCorrect = false;
-    }
   }
+
+  requestParserInstance->currentLine.clear();
 }
 
 void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
-  switch (partOfAMessageWhichIsBeingParsed) {
-    case requestLine:
-      parseRequestLine(this, requestPart);
-      break;
+  nextPartOfARequest += requestPart;
+  int32_t positionOfNewLine = nextPartOfARequest.find('\n', nextPartOfARequestsIndexPosition);
+  int32_t positionOfCarriageReturn = nextPartOfARequest.find('\r', nextPartOfARequestsIndexPosition);
+
+  if (positionOfNewLine == std::string::npos && positionOfCarriageReturn == std::string::npos) {
+    prepareForParsingNextLine();
+  } else {
+    int32_t splitPosition = std::min(
+      ((positionOfNewLine != std::string::npos) ? positionOfNewLine : nextPartOfARequest.size()),
+      ((positionOfCarriageReturn != std::string::npos) ? positionOfCarriageReturn : nextPartOfARequest.size()));
+
+    currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition, splitPosition - 1);
+
+    nextPartOfARequestsIndexPosition = splitPosition;
+    CRLFBlockSize = 1;
+    while (nextPartOfARequest[nextPartOfARequestsIndexPosition] == '\n'
+           || nextPartOfARequest[nextPartOfARequestsIndexPosition] == '\r') {
+      nextPartOfARequestsIndexPosition++;
+      CRLFBlockSize++;
+    }
+
+    lineIsParsed(this);
   }
 }
 
@@ -41,35 +48,23 @@ bool HTTPRequestParser::isALineParsed() const noexcept {
   return lineParsed;
 }
 
-bool HTTPRequestParser::isALineCorrect() const {
-  if (!isALineParsed()) {
-    throw std::logic_error(
-      "Prior to calling HTTPRequestParser::isALineCorrect, HTTPRequestParser::isALineParsed should return true.");
-  }
-
-  return lineCorrect;
-}
-
-std::string const &HTTPRequestParser::getFullyParsedLine() const {
-  if (!isALineParsed()) {
-    throw std::logic_error(
-      "Prior to calling HTTPRequestParser::getFullyParsedLine, HTTPRequestParser::isALineParsed should return true.");
-  }
-
-  return currentLine;
+bool HTTPRequestParser::hasAnErrorOccurred() const noexcept {
+  return errorOccurred;
 }
 
 void HTTPRequestParser::prepareForParsingNextLine() noexcept {
-  std::swap(currentLine, nextPartOfARequest);
-  nextPartOfARequest.clear();
   lineParsed = false;
-  lineCorrect = true;
+  currentLine = nextPartOfARequest.substr(nextPartOfARequestsIndexPosition);
+  nextPartOfARequest.clear();
+  nextPartOfARequestsIndexPosition = 0;
+  CRLFBlockSize = 0;
 }
 
 void HTTPRequestParser::reset() noexcept {
   currentLine.clear();
   nextPartOfARequest.clear();
   lineParsed = false;
-  partOfAMessageWhichIsBeingParsed = requestLine;
-  lineCorrect = true;
+  errorOccurred = false;
+  nextPartOfARequestsIndexPosition = 0;
+  CRLFBlockSize = 0;
 }
