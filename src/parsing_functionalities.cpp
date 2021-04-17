@@ -1,11 +1,24 @@
 #include "parsing_functionalities.h"
-#include <iostream>
 #include <string>
 
-constexpr static int32_t firstIndexOfAString = 0;
+void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
+  if (requestParserInstance->requestType) {
+    if (requestParserInstance->CRLFBlockSize >= HTTPRequestParser::minimumCRLFEndingBlockSize) {
+      requestParserInstance->finalRequestInfo =
+        {requestParserInstance->requestType, requestParserInstance->connection, requestParserInstance->resourcePath};
+    } else {
+      requestParserInstance->errorOccurred = true;
+      return;
+    }
 
-void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) {
+    requestParserInstance->connection = HTTPRequestParser::connectionDefault;
+  }
 
+  requestParserInstance->resourcePath.clear();
+  requestParserInstance->requestType = requestType;
+  for (uint32_t i = requestParserInstance->currentLine.find('/'); requestParserInstance->currentLine[i] != ' '; i++) {
+    requestParserInstance->resourcePath += requestParserInstance->currentLine[i];
+  }
 }
 
 void lineIsParsed(HTTPRequestParser *requestParserInstance) {
@@ -38,6 +51,8 @@ void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
       ((positionOfEndLine != std::string::npos) ? positionOfEndLine : nextPartOfARequest.size()),
       ((positionOfCarriageReturn != std::string::npos) ? positionOfCarriageReturn : nextPartOfARequest.size()));
 
+    lineIsParsed(this);
+
     if (nextPartOfARequestsIndexPosition != splitPosition) {
       currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition, splitPosition - 1);
       CRLFBlockSize = 1;
@@ -49,8 +64,6 @@ void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
       nextPartOfARequestsIndexPosition++;
       CRLFBlockSize++;
     }
-
-    lineIsParsed(this);
   }
 }
 
@@ -60,6 +73,13 @@ bool HTTPRequestParser::isALineParsed() const noexcept {
 
 bool HTTPRequestParser::hasAnErrorOccurred() const noexcept {
   return errorOccurred;
+}
+
+std::pair<bool, HTTPRequestParser::requestInfo> HTTPRequestParser::getFullyParsedRequest() noexcept {
+  requestInfo finalRequestInfoCopy = finalRequestInfo;
+  finalRequestInfo = {noRequest, connectionDefault, ""};
+
+  return {std::get<0>(finalRequestInfoCopy) != noRequest, finalRequestInfoCopy};
 }
 
 void HTTPRequestParser::prepareForParsingNextLine() noexcept {
@@ -76,6 +96,7 @@ void HTTPRequestParser::prepareForParsingNextLine() noexcept {
 void HTTPRequestParser::reset() noexcept {
   currentLine.clear();
   nextPartOfARequest.clear();
+  resourcePath.clear();
   lineParsed = false;
   errorOccurred = false;
   nextPartOfARequestsIndexPosition = 0;
@@ -85,3 +106,4 @@ void HTTPRequestParser::reset() noexcept {
   connection = 0;
   contentLengthDifferentThanZero = false;
 }
+
