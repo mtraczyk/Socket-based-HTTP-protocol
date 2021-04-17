@@ -20,6 +20,8 @@ set(SOURCE_FILES
         src/file_system_functionalities.cpp
         src/server.h
         src/server.cpp
+        src/err.h
+        src/err.cpp
         src/main.cpp
         )
 
