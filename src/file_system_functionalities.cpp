@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <sstream>
 
 bool checkWhetherGivenPathExists(std::string const &path) {
   return std::filesystem::exists(path);

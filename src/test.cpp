@@ -29,6 +29,21 @@ TEST (SquareTest /*test suite name*/, PosZeroNeg /*test name*/) {
       a.parsePartOfARequest("");
     }
   }
+
+  HTTPRequestParser b;
+  std::string request2 = "HEAD /hello/nic.txt HTTP/1.1\r";
+  std::string request3 = "\n\r\n";
+  b.parsePartOfARequest(request2);
+  b.parsePartOfARequest(request3);
+
+  while (b.isALineParsed()) {
+    b.parsePartOfARequest("");
+  }
+
+  std::cout << b.hasAnErrorOccurred() << std::endl;
+  std::cout << b.getFullyParsedRequest().first << " " << std::get<0>(b.getFullyParsedRequest().second) << " "
+            << std::get<1>(b.getFullyParsedRequest().second) << " " << std::get<2>(b.getFullyParsedRequest().second)
+            << std::endl;
 }
 
 /*

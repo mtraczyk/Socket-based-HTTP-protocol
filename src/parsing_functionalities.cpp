@@ -53,7 +53,7 @@ void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
 
   if (positionOfCRLF == std::string::npos) {
     lineParsed = false;
-    if (nextPartOfARequest[nextPartOfARequest.size() - 1] != 'r') {
+    if (nextPartOfARequest[nextPartOfARequest.size() - 1] != '\r') {
       prepareForParsingNextLine();
     }
   } else {
