@@ -20,7 +20,7 @@ set(SOURCE_FILES
         src/file_system_functionalities.cpp
         src/server.h
         src/server.cpp
-        src/test.cpp
+        src/main.cpp
         )
 
 # Wskazujemy plik wykonywalny.

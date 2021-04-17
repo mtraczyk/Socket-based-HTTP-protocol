@@ -2,7 +2,6 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
-#include <sstream>
 #include <vector>
 
 bool checkWhetherGivenPathExists(std::string const &path) {
@@ -24,7 +23,7 @@ void getResourcesFromAFile(std::string const &path,
     exit(EXIT_FAILURE);
   }
 
-  char delimiter = 9; // ASCII for tab
+  char delimiter = '\t'; // ASCII for tab
   std::string line, part;
   std::stringstream ss;
   std::vector<std::string> lineParts;
@@ -32,7 +31,7 @@ void getResourcesFromAFile(std::string const &path,
   while (std::getline(fs, line)) {
     ss.clear();
     lineParts.clear();
-    ss >> line;
+    ss << line;
 
     while (std::getline(ss, part, delimiter)) {
       lineParts.push_back(part);
