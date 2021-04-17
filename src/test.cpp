@@ -1,18 +1,30 @@
 #include "gtest/gtest.h"
-#include <regex>
+#include "parsing_functionalities.h"
+#include <iostream>
 
-namespace HTTP2RequestPatterns {
+namespace HTTPRequestPatterns2 {
   using std::regex;
 
   regex requestLineGET("(GET)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
   regex requestLineHEAD("(HEAD)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
-  regex headerConnectionDefault("(Connection):(\\s)*");
   regex headerConnectionClose("(Connection):(\\s)*(close)(\\s)*");
   regex contentLength("(Content-Length):(\\s)*(0)(\\s)*");
 }
 
 TEST (SquareTest /*test suite name*/, PosZeroNeg /*test name*/) {
-  assert(std::regex_match("Connection:   close  ", HTTP2RequestPatterns::headerConnectionClose));
+  HTTPRequestParser a;
+  std::string request = "HEAD /hello/nic.txt HTTP/1.1\r\nConnection:     close      \r\nContent-Length:   0 \r\nContent-Length:   0 \r\n\r\n";
+  a.parsePartOfARequest(request);
+
+  std::cout << ":)" << std::endl;
+
+  while (a.isALineParsed()) {
+    a.parsePartOfARequest("");
+    std::cout << ":)" << std::endl;
+  }
+
+  std::cout << a.hasAnErrorOccurred() << std::endl;
+  std::cout << a.getFullyParsedRequest().first << " " << std::get<2>(a.getFullyParsedRequest().second) << std::endl;
 }
 
 /*

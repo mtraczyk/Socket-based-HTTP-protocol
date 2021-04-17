@@ -1,23 +1,25 @@
 #include "parsing_functionalities.h"
 #include <string>
 
+constexpr static uint32_t firstIndexOfAString = 0;
+
+namespace HTTPRequestPatterns {
+  using std::regex;
+
+  regex requestLineGET("(GET)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
+  regex requestLineHEAD("(HEAD)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
+  regex headerConnectionClose("(Connection):(\\s)*(close)(\\s)*");
+  regex contentLength("(Content-Length):(\\s)*(0)(\\s)*");
+}
+
 void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
   if (requestParserInstance->requestType) {
-    if (requestParserInstance->CRLFBlockSize >= HTTPRequestParser::minimumCRLFEndingBlockSize) {
-      requestParserInstance->finalRequestInfo =
-        {requestParserInstance->requestType, requestParserInstance->connection, requestParserInstance->resourcePath};
-    } else {
-      requestParserInstance->errorOccurred = true;
-      return;
+    requestParserInstance->errorOccurred = true;
+  } else {
+    requestParserInstance->requestType = requestType;
+    for (uint32_t i = requestParserInstance->currentLine.find('/'); requestParserInstance->currentLine[i] != ' '; i++) {
+      requestParserInstance->resourcePath += requestParserInstance->currentLine[i];
     }
-
-    requestParserInstance->connection = HTTPRequestParser::connectionDefault;
-  }
-
-  requestParserInstance->resourcePath.clear();
-  requestParserInstance->requestType = requestType;
-  for (uint32_t i = requestParserInstance->currentLine.find('/'); requestParserInstance->currentLine[i] != ' '; i++) {
-    requestParserInstance->resourcePath += requestParserInstance->currentLine[i];
   }
 }
 
@@ -32,7 +34,11 @@ void lineIsParsed(HTTPRequestParser *requestParserInstance) {
     requestParserInstance->errorOccurred =
       ((requestParserInstance->connection) ? true : requestParserInstance->errorOccurred);
     requestParserInstance->connection = HTTPRequestParser::connectionClose;
-  } else if (!std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::contentLength)) {
+  } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::contentLength)) {
+    requestParserInstance->errorOccurred =
+      ((requestParserInstance->contentLengthHeaderOccurred) ? true : requestParserInstance->errorOccurred);
+    requestParserInstance->contentLengthHeaderOccurred = true;
+  } else {
     requestParserInstance->errorOccurred = true;
   }
 
@@ -41,29 +47,30 @@ void lineIsParsed(HTTPRequestParser *requestParserInstance) {
 
 void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
   nextPartOfARequest += requestPart;
-  int32_t positionOfEndLine = nextPartOfARequest.find('\n', nextPartOfARequestsIndexPosition);
-  int32_t positionOfCarriageReturn = nextPartOfARequest.find('\r', nextPartOfARequestsIndexPosition);
+  int32_t positionOfCRLF = nextPartOfARequest.find("\r\n", nextPartOfARequestsIndexPosition);
 
-  if (positionOfEndLine == std::string::npos && positionOfCarriageReturn == std::string::npos) {
-    prepareForParsingNextLine();
+  if (positionOfCRLF == std::string::npos) {
+    lineParsed = false;
+    if (nextPartOfARequest[nextPartOfARequest.size() - 1] != 'r') {
+      prepareForParsingNextLine();
+    }
   } else {
-    int32_t splitPosition = std::min(
-      ((positionOfEndLine != std::string::npos) ? positionOfEndLine : nextPartOfARequest.size()),
-      ((positionOfCarriageReturn != std::string::npos) ? positionOfCarriageReturn : nextPartOfARequest.size()));
+    if (currentLine.empty() && nextPartOfARequestsIndexPosition == positionOfCRLF) {
+      nextPartOfARequestsIndexPosition += sizeOfCRLFBlock;
 
+      if (requestType) {
+        requestParsed = true;
+      } else {
+        errorOccurred = true;
+      }
+
+      return;
+    }
+
+    currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition,
+                                             positionOfCRLF - nextPartOfARequestsIndexPosition);
     lineIsParsed(this);
-
-    if (nextPartOfARequestsIndexPosition != splitPosition) {
-      currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition, splitPosition - 1);
-      CRLFBlockSize = 1;
-    }
-
-    nextPartOfARequestsIndexPosition = splitPosition;
-    while (nextPartOfARequest[nextPartOfARequestsIndexPosition] == '\n'
-           || nextPartOfARequest[nextPartOfARequestsIndexPosition] == '\r') {
-      nextPartOfARequestsIndexPosition++;
-      CRLFBlockSize++;
-    }
+    nextPartOfARequestsIndexPosition = positionOfCRLF + sizeOfCRLFBlock;
   }
 }
 
@@ -76,21 +83,24 @@ bool HTTPRequestParser::hasAnErrorOccurred() const noexcept {
 }
 
 std::pair<bool, HTTPRequestParser::requestInfo> HTTPRequestParser::getFullyParsedRequest() noexcept {
-  requestInfo finalRequestInfoCopy = finalRequestInfo;
-  finalRequestInfo = {noRequest, connectionDefault, ""};
+  finalRequestInfo = {requestType, connection, resourcePath};
 
-  return {std::get<0>(finalRequestInfoCopy) != noRequest, finalRequestInfoCopy};
+  return {requestParsed, finalRequestInfo};
 }
 
 void HTTPRequestParser::prepareForParsingNextLine() noexcept {
-  lineParsed = false;
   currentLine = nextPartOfARequest.substr(nextPartOfARequestsIndexPosition);
   nextPartOfARequest.clear();
-  nextPartOfARequestsIndexPosition = 0;
+  nextPartOfARequestsIndexPosition = firstIndexOfAString;
+}
 
-  if (!currentLine.empty()) {
-    CRLFBlockSize = 0;
-  }
+void HTTPRequestParser::cleanAfterParsingWholeRequest() noexcept {
+  lineParsed = false;
+  errorOccurred = false;
+  requestParsed = false;
+  contentLengthHeaderOccurred = false;
+  requestType = noRequest;
+  connection = connectionDefault;
 }
 
 void HTTPRequestParser::reset() noexcept {
@@ -99,11 +109,11 @@ void HTTPRequestParser::reset() noexcept {
   resourcePath.clear();
   lineParsed = false;
   errorOccurred = false;
-  nextPartOfARequestsIndexPosition = 0;
-  CRLFBlockSize = 0;
-  requestType = 0;
-  requestType = 0;
-  connection = 0;
-  contentLengthDifferentThanZero = false;
+  requestParsed = false;
+  contentLengthHeaderOccurred = false;
+  nextPartOfARequestsIndexPosition = firstIndexOfAString;
+  requestType = noRequest;
+  connection = connectionDefault;
 }
+
 
