@@ -17,6 +17,8 @@ void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestT
     requestParserInstance->errorOccurred = true;
   } else {
     requestParserInstance->requestType = requestType;
+    requestParserInstance->resourcePath.clear();
+
     for (uint32_t i = requestParserInstance->currentLine.find('/'); requestParserInstance->currentLine[i] != ' '; i++) {
       requestParserInstance->resourcePath += requestParserInstance->currentLine[i];
     }

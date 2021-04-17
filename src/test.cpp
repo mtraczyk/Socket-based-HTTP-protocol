@@ -13,18 +13,30 @@ namespace HTTPRequestPatterns2 {
 
 TEST (SquareTest /*test suite name*/, PosZeroNeg /*test name*/) {
   HTTPRequestParser a;
-  std::string request = "HEAD /hello/nic.txt HTTP/1.1\r\nConnection:     close      \r\nContent-Length:   0 \r\nContent-Length:   0 \r\n\r\n";
+  std::string request = "HEAD /hello/nic.txt HTTP/1.1\r\nConnection:     close      \r\nContent-Length:   0\r\n\r\nGET /hello/nic2.txt HTTP/1.1\r\nContent-Length:   0\r\n\r\n";
   a.parsePartOfARequest(request);
 
   std::cout << ":)" << std::endl;
 
   while (a.isALineParsed()) {
     a.parsePartOfARequest("");
-    std::cout << ":)" << std::endl;
+    if (a.getFullyParsedRequest().first) {
+      std::cout << a.hasAnErrorOccurred() << std::endl;
+      std::cout << a.getFullyParsedRequest().first << " " << std::get<0>(a.getFullyParsedRequest().second) << " "
+                << std::get<1>(a.getFullyParsedRequest().second) << " " << std::get<2>(a.getFullyParsedRequest().second)
+                << std::endl;
+      a.cleanAfterParsingWholeRequest();
+      a.parsePartOfARequest("");
+    }
   }
 
-  std::cout << a.hasAnErrorOccurred() << std::endl;
-  std::cout << a.getFullyParsedRequest().first << " " << std::get<2>(a.getFullyParsedRequest().second) << std::endl;
+  std::vector<std::string> strings;
+  std::istringstream f("denmark;sweden;india;us");
+  std::string s;
+  while (std::getline(f, s, ';')) {
+    std::cout << s << std::endl;
+    strings.push_back(s);
+  }
 }
 
 /*
