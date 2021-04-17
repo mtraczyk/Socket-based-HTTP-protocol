@@ -25,8 +25,16 @@ set(SOURCE_FILES
         src/main.cpp
         )
 
+set(SOURCE_FILES2
+        src/err.h
+        src/err.cpp
+        src/echo-client.cpp
+        )
+
 # Wskazujemy plik wykonywalny.
 add_executable(zadanie1SIK ${SOURCE_FILES})
+
+add_executable(echo-client ${SOURCE_FILES2})
 
 #Link with GoogleTest
 target_link_libraries(zadanie1SIK gtest gtest_main)

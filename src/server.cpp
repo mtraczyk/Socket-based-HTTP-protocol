@@ -67,21 +67,24 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
     client_address_len = sizeof(client_address);
     // get client connection from the socket
     msg_sock = accept(sock, (struct sockaddr *) &client_address, &client_address_len);
-    if (msg_sock < 0)
+    if (msg_sock < 0) {
       syserr("accept");
+    }
     do {
       len = read(msg_sock, buffer, sizeof(buffer));
-      if (len < 0)
+      if (len < 0) {
         syserr("reading from client socket");
-      else {
+      } else {
         printf("read from socket: %zd bytes: %.*s\n", len, (int) len, buffer);
         snd_len = write(msg_sock, buffer, len);
-        if (snd_len != len)
+        if (snd_len != len) {
           syserr("writing to client socket");
+        }
       }
     } while (len > 0);
     printf("ending connection\n");
-    if (close(msg_sock) < 0)
+    if (close(msg_sock) < 0) {
       syserr("close");
+    }
   }
 }
