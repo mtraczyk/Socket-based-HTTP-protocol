@@ -38,10 +38,10 @@ void getResourcesFromAFile(std::string const &path,
       lineParts.push_back(part);
     }
 
-    if (resourcesMap.find(lineParts[0]) == resourcesMap.end()) {
-      resourcesMap[lineParts[0]] = {lineParts[1], lineParts[2]};
-    }
-  }
-
   fs.close();
+  if (resourcesMap.find(lineParts[0]) == resourcesMap.end()) {
+    resourcesMap[lineParts[0]] = {lineParts[1], lineParts[2]};
+  }
+}
+
 }

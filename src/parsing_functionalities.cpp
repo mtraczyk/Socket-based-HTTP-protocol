@@ -61,6 +61,7 @@ void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
       nextPartOfARequestsIndexPosition += sizeOfCRLFBlock;
 
       if (requestType) {
+        lineParsed = true;
         requestParsed = true;
       } else {
         errorOccurred = true;
@@ -91,7 +92,7 @@ std::pair<bool, HTTPRequestParser::requestInfo> HTTPRequestParser::getFullyParse
 }
 
 void HTTPRequestParser::prepareForParsingNextLine() noexcept {
-  currentLine = nextPartOfARequest.substr(nextPartOfARequestsIndexPosition);
+  currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition);
   nextPartOfARequest.clear();
   nextPartOfARequestsIndexPosition = firstIndexOfAString;
 }

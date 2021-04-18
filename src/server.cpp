@@ -13,6 +13,12 @@ namespace {
   constexpr static uint32_t bufferSize = 2000;
   constexpr static uint32_t queueLength = 5;
 
+  int32_t sock, msgSock;
+  struct sockaddr_in serverAddress;
+  struct sockaddr_in clientAddress;
+  socklen_t clientAddressLen;
+  ssize_t len;
+
   void convertToAbsolutePath(std::string &pathString) noexcept {
     using namespace std::filesystem;
 
@@ -26,21 +32,73 @@ namespace {
       }
     }
   }
+
+  void printRequestInfo(HTTPRequestParser::requestInfo requestInfo) {
+    std::cout << "REQUEST TYPE: ";
+    if (std::get<0>(requestInfo) == HTTPRequestParser::requestGET) {
+      std::cout << "GET" << " ";
+    } else if (std::get<0>(requestInfo) == HTTPRequestParser::requestHEAD) {
+      std::cout << "HEAD" << " ";
+    }
+    std::cout << std::endl;
+
+    if (std::get<1>(requestInfo) == HTTPRequestParser::connectionDefault) {
+      std::cout << "CONNECTION: DEFAULT" << " ";
+    } else if (std::get<1>(requestInfo) == HTTPRequestParser::connectionClose) {
+      std::cout << "CONNECTION: CLOSE" << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "RESOURCE PATH: " << std::get<2>(requestInfo) << std::endl;
+  }
+
+#warning exceptions
+
+  bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser) {
+    requestParser.parsePartOfARequest(buffer);
+
+    while (requestParser.isALineParsed()) {
+      if (requestParser.hasAnErrorOccurred()) {
+        return false;
+      }
+
+      const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
+      if (parsedRequestInfo.first) {
+        printRequestInfo(parsedRequestInfo.second);
+        requestParser.cleanAfterParsingWholeRequest();
+      }
+
+      requestParser.parsePartOfARequest("");
+    }
+
+    return true;
+  }
+
+  void contactWithClient(char *buffer, HTTPRequestParser &requestParser) {
+    do {
+      len = read(msgSock, buffer, sizeof(buffer));
+      if (len < 0) {
+        syserr("reading from client socket");
+      } else {
+        printf("read from socket: %zd bytes: %.*s\n", len, (int) len, buffer);
+
+        if (!parseReadInfo(buffer, requestParser)) {
+#warning
+          // error 400
+        }
+      }
+      memset(buffer, 0, len);
+    } while (len > 0);
+  }
 }
 
 void start_server(std::string mainCatalog, std::string const &correlatedServers, uint32_t portNum) {
   std::unordered_map<std::string, std::pair<std::string, std::string>> resourcesToAcquireWithCorrelatedServers;
+#warning TODO
   getResourcesFromAFile(correlatedServers, resourcesToAcquireWithCorrelatedServers);
   convertToAbsolutePath(mainCatalog);
 
-  int32_t sock, msg_sock;
-  struct sockaddr_in server_address;
-  struct sockaddr_in client_address;
-  socklen_t client_address_len;
-
   char buffer[bufferSize];
-  ssize_t len, snd_len;
-
   sock = socket(PF_INET, SOCK_STREAM, 0); // creating IPv4 TCP socket
   if (sock < 0) {
     syserr("socket");
@@ -48,12 +106,12 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
   // after socket() call; we should close(sock) on any execution path;
   // since all execution paths exit immediately, sock would be closed when program terminates
 
-  server_address.sin_family = AF_INET; // IPv4
-  server_address.sin_addr.s_addr = htonl(INADDR_ANY); // listening on all interfaces
-  server_address.sin_port = htons(portNum); // listening on port PORT_NUM
+  serverAddress.sin_family = AF_INET; // IPv4
+  serverAddress.sin_addr.s_addr = htonl(INADDR_ANY); // listening on all interfaces
+  serverAddress.sin_port = htons(portNum); // listening on port PORT_NUM
 
   // bind the socket to a concrete address
-  if (bind(sock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
+  if (bind(sock, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
     syserr("bind");
   }
 
@@ -62,29 +120,23 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
     syserr("listen");
   }
 
-  printf("accepting client connections on port %hu\n", ntohs(server_address.sin_port));
+  printf("accepting client connections on port %hu\n", ntohs(serverAddress.sin_port));
+  HTTPRequestParser requestParser = HTTPRequestParser();
   for (;;) {
-    client_address_len = sizeof(client_address);
+    clientAddressLen = sizeof(clientAddress);
     // get client connection from the socket
-    msg_sock = accept(sock, (struct sockaddr *) &client_address, &client_address_len);
-    if (msg_sock < 0) {
+    msgSock = accept(sock, (struct sockaddr *) &clientAddress, &clientAddressLen);
+    if (msgSock < 0) {
       syserr("accept");
     }
-    do {
-      len = read(msg_sock, buffer, sizeof(buffer));
-      if (len < 0) {
-        syserr("reading from client socket");
-      } else {
-        printf("read from socket: %zd bytes: %.*s\n", len, (int) len, buffer);
-        snd_len = write(msg_sock, buffer, len);
-        if (snd_len != len) {
-          syserr("writing to client socket");
-        }
-      }
-    } while (len > 0);
+
+    memset(buffer, 0, sizeof(buffer));
+    contactWithClient(buffer, requestParser);
+
     printf("ending connection\n");
-    if (close(msg_sock) < 0) {
+    if (close(msgSock) < 0) {
       syserr("close");
     }
+    requestParser.reset();
   }
 }

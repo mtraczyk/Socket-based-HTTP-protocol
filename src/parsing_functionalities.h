@@ -8,6 +8,13 @@ class HTTPRequestParser {
   public:
     using requestInfo = std::tuple<uint8_t, uint8_t, std::string>;
 
+    constexpr static uint8_t requestGET = 1;
+    constexpr static uint8_t requestHEAD = 2;
+    constexpr static uint8_t noRequest = 0;
+    constexpr static uint8_t connectionDefault = 0;
+    constexpr static uint8_t connectionClose = 1;
+    constexpr static uint8_t sizeOfCRLFBlock = 2;
+
     HTTPRequestParser() = default;
     void parsePartOfARequest(std::string const &);
     bool isALineParsed() const noexcept;
@@ -20,13 +27,6 @@ class HTTPRequestParser {
     friend void parseRequestLine(HTTPRequestParser *, uint8_t) noexcept;
     friend void lineIsParsed(HTTPRequestParser *);
     void prepareForParsingNextLine() noexcept;
-
-    constexpr static uint8_t requestGET = 1;
-    constexpr static uint8_t requestHEAD = 2;
-    constexpr static uint8_t noRequest = 0;
-    constexpr static uint8_t connectionDefault = 0;
-    constexpr static uint8_t connectionClose = 1;
-    constexpr static uint8_t sizeOfCRLFBlock = 2;
 
     std::string currentLine;
     std::string nextPartOfARequest;

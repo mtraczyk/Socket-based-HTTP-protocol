@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "parsing_functionalities.h"
 #include <iostream>
+#include <filesystem>
 
 namespace HTTPRequestPatterns2 {
   using std::regex;
