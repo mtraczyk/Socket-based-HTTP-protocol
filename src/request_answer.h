@@ -12,7 +12,7 @@ namespace requestData {
 
 void incorrectRequestAnswer() noexcept;
 void serverErrorAnswer() noexcept;
-void correctRequestAnswer(std::string, requestData::requestInfo const &,
-                          requestData::correlatedServersInfoMap const &) noexcept;
+bool correctRequestAnswer(std::string const &, requestData::requestInfo const &,
+                          requestData::correlatedServersInfoMap const &);
 
 #endif /* REQUEST_ANSWER_H */

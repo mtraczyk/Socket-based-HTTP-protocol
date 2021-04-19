@@ -68,7 +68,10 @@ namespace {
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
           printRequestInfo(parsedRequestInfo.second);
-          correctRequestAnswer(mainCatalogFullPath, parsedRequestInfo.second, resourcesToAcquireWithCorrelatedServers);
+          if (!correctRequestAnswer(mainCatalogFullPath, parsedRequestInfo.second,
+                                    resourcesToAcquireWithCorrelatedServers)) {
+            return false;
+          }
           requestParser.cleanAfterParsingWholeRequest();
         }
 

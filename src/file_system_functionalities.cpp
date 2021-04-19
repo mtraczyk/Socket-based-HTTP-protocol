@@ -7,6 +7,12 @@
 
 using correlatedServersInfoMap = std::unordered_map<std::string, std::pair<std::string, std::string>>;
 
+namespace {
+  auto readBytes(std::istream &is, std::vector<uint8_t> &bytes) -> std::istream & {
+    return is.read(&reinterpret_cast<char &>(bytes[0]), bytes.size());
+  }
+}
+
 bool checkWhetherGivenPathExists(std::string const &path) {
   return std::filesystem::exists(path);
 }
@@ -47,5 +53,10 @@ void getResourcesFromAFile(std::string const &path, correlatedServersInfoMap &re
 }
 
 bool getApplicationOctetStreamRepresentationOfAFile(std::string const &path, std::vector<uint8_t> &bytes) {
+  auto fs = std::ifstream(path, std::ios_base::binary | std::ios_base::ate);
+  auto const size = fs.tellg();
+  bytes.resize(size);
+  fs.seekg(0);
 
+  return !not readBytes(fs, bytes);
 }
