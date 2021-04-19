@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 namespace {
   constexpr static uint32_t bufferSize = 2000;
@@ -50,7 +51,7 @@ namespace {
     }
     std::cout << std::endl;
 
-    std::cout << "RESOURCE PATH: " << std::get<2>(requestInfo) << std::endl;
+    std::cout << "RESOURCE PATH: " << std::get<2>(requestInfo) << std::endl << std::endl;
   }
 
   bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser,
@@ -61,14 +62,14 @@ namespace {
 
       while (requestParser.isALineParsed()) {
         if (requestParser.hasAnErrorOccurred()) {
-          incorrectRequestAnswer();
+          incorrectRequestAnswer(msgSock);
           return false;
         }
 
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
           printRequestInfo(parsedRequestInfo.second);
-          if (!correctRequestAnswer(mainCatalogFullPath, parsedRequestInfo.second,
+          if (!correctRequestAnswer(msgSock, mainCatalogFullPath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
             return false;
           }
@@ -79,11 +80,8 @@ namespace {
       }
     } catch (std::regex_error const &e) {
       std::cout << "regex_error caught:" << e.what() << std::endl;
-      if (e.code() == std::regex_constants::error_brack) {
-        std::cout << "The code was error_brack" << std::endl;
-      }
+      serverErrorAnswer(msgSock);
 
-      serverErrorAnswer();
       return false;
     }
 
@@ -97,7 +95,7 @@ namespace {
       if (len < 0) {
         syserr("reading from client socket");
       } else {
-        printf("read from socket: %zd bytes: %.*s\n", len, (int) len, buffer);
+        std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
 
         if (!parseReadInfo(buffer, requestParser, mainCatalogFullPath, resourcesToAcquireWithCorrelatedServers)) {
           return;
@@ -135,7 +133,7 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
     syserr("listen");
   }
 
-  printf("accepting client connections on port %hu\n", ntohs(serverAddress.sin_port));
+  std::cout << "accepting client connections on port: " << ntohs(serverAddress.sin_port) << std::endl << std::endl;
   HTTPRequestParser requestParser = HTTPRequestParser();
   for (;;) {
     clientAddressLen = sizeof(clientAddress);
@@ -145,10 +143,13 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
       syserr("accept");
     }
 
+    std::cout << "starting connection" << std::endl;
+    std::cout << "IP address is: " << inet_ntoa(clientAddress.sin_addr) << std::endl;
+    std::cout << "port is: " << (int32_t) ntohs(clientAddress.sin_port) << std::endl << std::endl;
     memset(buffer, 0, sizeof(buffer));
     contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers);
 
-    printf("ending connection\n");
+    std::cout << "ending connection" << std::endl << std::endl;
     if (close(msgSock) < 0) {
       syserr("close");
     }

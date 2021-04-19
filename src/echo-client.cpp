@@ -9,8 +9,7 @@
 
 #define BUFFER_SIZE 2000
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int sock;
   struct addrinfo addr_hints;
   struct addrinfo *addr_result;
@@ -31,8 +30,7 @@ int main(int argc, char *argv[])
   err = getaddrinfo(argv[1], argv[2], &addr_hints, &addr_result);
   if (err == EAI_SYSTEM) { // system error
     syserr("getaddrinfo: %s", gai_strerror(err));
-  }
-  else if (err != 0) { // other error (host not found, etc.)
+  } else if (err != 0) { // other error (host not found, etc.)
     fatal("getaddrinfo: %s", gai_strerror(err));
   }
 
@@ -57,14 +55,16 @@ int main(int argc, char *argv[])
     if (write(sock, argv[i], len) != len) {
       syserr("partial / failed write");
     }
+  }
 
+  do {
     memset(buffer, 0, sizeof(buffer));
     rcv_len = read(sock, buffer, sizeof(buffer) - 1);
     if (rcv_len < 0) {
       syserr("read");
     }
-    printf("read from socket: %zd bytes: %s\n", rcv_len, buffer);
-  }
+    printf("read from socket: %zd bytes:\n%s\n", rcv_len, buffer);
+  } while (rcv_len > 0);
 
   (void) close(sock); // socket would be closed anyway when the program ends
 
