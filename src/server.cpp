@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 namespace {
-  using correlatedServersInfoMap = std::unordered_map<std::string, std::pair<std::string, std::string>>;
   constexpr static uint32_t bufferSize = 2000;
   constexpr static uint32_t queueLength = 5;
 
@@ -54,7 +53,9 @@ namespace {
     std::cout << "RESOURCE PATH: " << std::get<2>(requestInfo) << std::endl;
   }
 
-  bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser) {
+  bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser,
+                     std::string const &mainCatalogFullPath,
+                     requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     try {
       requestParser.parsePartOfARequest(buffer);
 
@@ -67,7 +68,7 @@ namespace {
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
           printRequestInfo(parsedRequestInfo.second);
-          correctRequestAnswer();
+          correctRequestAnswer(mainCatalogFullPath, parsedRequestInfo.second, resourcesToAcquireWithCorrelatedServers);
           requestParser.cleanAfterParsingWholeRequest();
         }
 
@@ -86,8 +87,8 @@ namespace {
     return true;
   }
 
-  void contactWithClient(char *buffer, HTTPRequestParser &requestParser,
-                         correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
+  void contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogFullPath,
+                         requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
       if (len < 0) {
@@ -95,7 +96,7 @@ namespace {
       } else {
         printf("read from socket: %zd bytes: %.*s\n", len, (int) len, buffer);
 
-        if (!parseReadInfo(buffer, requestParser)) {
+        if (!parseReadInfo(buffer, requestParser, mainCatalogFullPath, resourcesToAcquireWithCorrelatedServers)) {
           return;
         }
       }
@@ -105,7 +106,7 @@ namespace {
 }
 
 void start_server(std::string mainCatalog, std::string const &correlatedServers, uint32_t portNum) {
-  correlatedServersInfoMap resourcesToAcquireWithCorrelatedServers;
+  requestData::correlatedServersInfoMap resourcesToAcquireWithCorrelatedServers;
   getResourcesFromAFile(correlatedServers, resourcesToAcquireWithCorrelatedServers);
   convertToAbsolutePath(mainCatalog);
 
@@ -142,7 +143,7 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
     }
 
     memset(buffer, 0, sizeof(buffer));
-    contactWithClient(buffer, requestParser, resourcesToAcquireWithCorrelatedServers);
+    contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers);
 
     printf("ending connection\n");
     if (close(msgSock) < 0) {

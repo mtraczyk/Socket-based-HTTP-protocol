@@ -5,6 +5,8 @@
 #include <vector>
 #include <sstream>
 
+using correlatedServersInfoMap = std::unordered_map<std::string, std::pair<std::string, std::string>>;
+
 bool checkWhetherGivenPathExists(std::string const &path) {
   return std::filesystem::exists(path);
 }
@@ -16,8 +18,7 @@ bool checkWhetherAccessToAPathIsAcquired(std::string const &path) {
   return (p & fs::perms::others_read) != fs::perms::none;
 }
 
-void getResourcesFromAFile(std::string const &path,
-                           std::unordered_map<std::string, std::pair<std::string, std::string>> &resourcesMap) {
+void getResourcesFromAFile(std::string const &path, correlatedServersInfoMap &resourcesMap) {
   std::fstream fs(path, std::fstream::in);
 
   if (!fs.is_open()) {
@@ -38,10 +39,13 @@ void getResourcesFromAFile(std::string const &path,
       lineParts.push_back(part);
     }
 
-  fs.close();
-  if (resourcesMap.find(lineParts[0]) == resourcesMap.end()) {
-    resourcesMap[lineParts[0]] = {lineParts[1], lineParts[2]};
+    fs.close();
+    if (resourcesMap.find(lineParts[0]) == resourcesMap.end()) {
+      resourcesMap[lineParts[0]] = {lineParts[1], lineParts[2]};
+    }
   }
 }
+
+bool getApplicationOctetStreamRepresentationOfAFile(std::string const &path, std::vector<uint8_t> &bytes) {
 
 }

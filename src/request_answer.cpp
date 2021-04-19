@@ -8,6 +8,7 @@ void serverErrorAnswer() noexcept {
 
 }
 
-void correctRequestAnswer() noexcept {
+void correctRequestAnswer(std::string mainCatalogFullPath, requestData::requestInfo const &parsedRequestInfo,
+                          requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) noexcept {
 
 }
