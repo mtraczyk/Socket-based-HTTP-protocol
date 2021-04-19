@@ -1,6 +1,7 @@
 #include "server.h"
 #include "parsing_functionalities.h"
 #include "file_system_functionalities.h"
+#include "request_answer.h"
 #include "err.h"
 #include <unordered_map>
 #include <filesystem>
@@ -10,6 +11,7 @@
 #include <unistd.h>
 
 namespace {
+  using correlatedServersInfoMap = std::unordered_map<std::string, std::pair<std::string, std::string>>;
   constexpr static uint32_t bufferSize = 2000;
   constexpr static uint32_t queueLength = 5;
 
@@ -52,29 +54,40 @@ namespace {
     std::cout << "RESOURCE PATH: " << std::get<2>(requestInfo) << std::endl;
   }
 
-#warning exceptions
-
   bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser) {
-    requestParser.parsePartOfARequest(buffer);
+    try {
+      requestParser.parsePartOfARequest(buffer);
 
-    while (requestParser.isALineParsed()) {
-      if (requestParser.hasAnErrorOccurred()) {
-        return false;
+      while (requestParser.isALineParsed()) {
+        if (requestParser.hasAnErrorOccurred()) {
+          incorrectRequestAnswer();
+          return false;
+        }
+
+        const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
+        if (parsedRequestInfo.first) {
+          printRequestInfo(parsedRequestInfo.second);
+          correctRequestAnswer();
+          requestParser.cleanAfterParsingWholeRequest();
+        }
+
+        requestParser.parsePartOfARequest("");
+      }
+    } catch (std::regex_error const &e) {
+      std::cout << "regex_error caught:" << e.what() << std::endl;
+      if (e.code() == std::regex_constants::error_brack) {
+        std::cout << "The code was error_brack" << std::endl;
       }
 
-      const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
-      if (parsedRequestInfo.first) {
-        printRequestInfo(parsedRequestInfo.second);
-        requestParser.cleanAfterParsingWholeRequest();
-      }
-
-      requestParser.parsePartOfARequest("");
+      serverErrorAnswer();
+      return false;
     }
 
     return true;
   }
 
-  void contactWithClient(char *buffer, HTTPRequestParser &requestParser) {
+  void contactWithClient(char *buffer, HTTPRequestParser &requestParser,
+                         correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
       if (len < 0) {
@@ -83,8 +96,7 @@ namespace {
         printf("read from socket: %zd bytes: %.*s\n", len, (int) len, buffer);
 
         if (!parseReadInfo(buffer, requestParser)) {
-#warning
-          // error 400
+          return;
         }
       }
       memset(buffer, 0, len);
@@ -93,8 +105,7 @@ namespace {
 }
 
 void start_server(std::string mainCatalog, std::string const &correlatedServers, uint32_t portNum) {
-  std::unordered_map<std::string, std::pair<std::string, std::string>> resourcesToAcquireWithCorrelatedServers;
-#warning TODO
+  correlatedServersInfoMap resourcesToAcquireWithCorrelatedServers;
   getResourcesFromAFile(correlatedServers, resourcesToAcquireWithCorrelatedServers);
   convertToAbsolutePath(mainCatalog);
 
@@ -131,7 +142,7 @@ void start_server(std::string mainCatalog, std::string const &correlatedServers,
     }
 
     memset(buffer, 0, sizeof(buffer));
-    contactWithClient(buffer, requestParser);
+    contactWithClient(buffer, requestParser, resourcesToAcquireWithCorrelatedServers);
 
     printf("ending connection\n");
     if (close(msgSock) < 0) {

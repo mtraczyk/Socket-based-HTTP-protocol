@@ -22,6 +22,8 @@ set(SOURCE_FILES
         src/server.cpp
         src/err.h
         src/err.cpp
+        src/request_answer.h
+        src/request_answer.cpp
         src/main.cpp
         )
 
