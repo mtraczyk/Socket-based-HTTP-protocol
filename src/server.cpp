@@ -55,6 +55,13 @@ namespace {
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
           printRequestInfo(parsedRequestInfo.second);
+          auto fullPathToTheFile = mainCatalogFullPath + '/' + std::get<2>(parsedRequestInfo.second);
+
+          if (!isFileContainedWithinGivenDirectory(mainCatalogFullPath, fullPathToTheFile)) {
+            incorrectRequestAnswer(msgSock);
+            return false;
+          }
+
           if (!correctRequestAnswer(msgSock, mainCatalogFullPath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
             return false;
