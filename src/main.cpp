@@ -6,7 +6,7 @@
 constexpr static uint32_t decimalBasis = 10;
 
 int main(int argc, char **argv) {
-  if (argc < 3) {
+  if (argc < 3 || argc > 4) {
     fatal("Usage: %s <nazwa-katalogu-z-plikami> "
           "<plik-z-serwerami-skorelowanymi> [<numer-portu-serwera>] ...\n", argv[0]);
   }
@@ -18,13 +18,11 @@ int main(int argc, char **argv) {
     } else if (argc == 4) {
       char *endPtr;
       uint32_t portNum = strtol(argv[3], &endPtr, decimalBasis);
-      if (*endPtr != '\0' || endPtr == argv[4]) {
+      if (*endPtr != '\0' || endPtr == argv[3]) {
         syserr("strtol");
       }
 
       start_server(argv[1], argv[2], portNum);
-    } else {
-      syserr("Too many program parameters.");
     }
   } else {
     syserr("Incorrect parameters/access to parameters denied.");
