@@ -74,8 +74,8 @@ bool isDirectory(std::string const &path) {
 }
 
 bool isFileContainedWithinGivenDirectory(std::string const &directory, std::string const &file) {
-  auto b = normalizedPath(directory);
-  auto s = normalizedPath(file).parent_path();
+  auto b = normalizedPath(normalizedPath(directory).generic_string() + "/");
+  auto s = normalizedPath(normalizedPath(file).parent_path().generic_string() + "/");
   auto m = std::mismatch(b.begin(), b.end(),
                          s.begin(), s.end());
 

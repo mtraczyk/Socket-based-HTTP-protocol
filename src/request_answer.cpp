@@ -5,13 +5,11 @@
 #include <unistd.h>
 
 namespace {
-  void writeMessageToADescriptor(int32_t msgSock, std::string const &message) {
-    if (write(msgSock, message.c_str(), message.size()) != message.size()) {
-      syserr("partial / failed write");
-    }
+  bool writeMessageToADescriptor(int32_t msgSock, std::string const &message) {
+    return write(msgSock, message.c_str(), message.size()) >= 0;
   }
 
-  void sendAnswerForFileFoundWithinGivenCatalog(int32_t msgSock, uint8_t requestType,
+  bool sendAnswerForFileFoundWithinGivenCatalog(int32_t msgSock, uint8_t requestType,
                                                 std::vector<uint8_t> const &bytes) {
     std::string answer = "HTTP/1.1 200 answer for a correct request\r\n";
     answer += "Content-Type: application/octet-stream\r\n";
@@ -23,15 +21,15 @@ namespace {
       }
     }
 
-    writeMessageToADescriptor(msgSock, answer);
+    return writeMessageToADescriptor(msgSock, answer);
   }
 
-  void sendAnswerForFileFoundWithCorrelatedServers(int32_t msgSock) {
-
+  bool sendAnswerForFileFoundWithCorrelatedServers(int32_t msgSock) {
+    return true;
   }
 
-  void sendAnswerForNotFoundFile(int32_t msgSock) {
-
+  bool sendAnswerForNotFoundFile(int32_t msgSock) {
+    return true;
   }
 }
 
@@ -48,12 +46,22 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
                           requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
   std::vector<uint8_t> bytes;
   std::string path = mainCatalogAbsolutePath;
-  path += std::get<2>(parsedRequestInfo);
+  path += "/" + std::get<2>(parsedRequestInfo);
+
+  if (!isFileContainedWithinGivenDirectory(mainCatalogAbsolutePath, path)) {
+    if (!sendAnswerForNotFoundFile(msgSock)) {
+      return false;
+    }
+
+    return std::get<1>(parsedRequestInfo) != HTTPRequestParser::connectionClose;
+  }
 
   if (checkWhetherGivenPathExists(path)) {
     if (checkWhetherAccessToAPathIsAcquired(path) &&
         getApplicationOctetStreamRepresentationOfAFile(mainCatalogAbsolutePath, bytes)) {
-      sendAnswerForFileFoundWithinGivenCatalog(msgSock, std::get<0>(parsedRequestInfo), bytes);
+      if (!sendAnswerForFileFoundWithinGivenCatalog(msgSock, std::get<0>(parsedRequestInfo), bytes)) {
+        return false;
+      }
 
       return std::get<1>(parsedRequestInfo) != HTTPRequestParser::connectionClose;
     } else {
@@ -64,9 +72,13 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
   }
 
   if (resourcesToAcquireWithCorrelatedServers.find(path) != resourcesToAcquireWithCorrelatedServers.end()) {
-    sendAnswerForFileFoundWithCorrelatedServers(msgSock);
+    if (!sendAnswerForFileFoundWithCorrelatedServers(msgSock)) {
+      return false;
+    }
   } else {
-    sendAnswerForNotFoundFile(msgSock);
+    if (!sendAnswerForNotFoundFile(msgSock)) {
+      return false;
+    }
   }
 
   return std::get<1>(parsedRequestInfo) != HTTPRequestParser::connectionClose;

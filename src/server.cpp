@@ -22,6 +22,7 @@ namespace {
   ssize_t len;
 
   void printRequestInfo(HTTPRequestParser::requestInfo requestInfo) {
+    std::cout << "HTTP/1.1 REQUEST RECEIVED" << std::endl;
     std::cout << "REQUEST TYPE: ";
     if (std::get<0>(requestInfo) == HTTPRequestParser::requestGET) {
       std::cout << "GET" << " ";
@@ -41,7 +42,7 @@ namespace {
   }
 
   bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser,
-                     std::string const &mainCatalogFullPath,
+                     std::string const &mainCatalogAbsolutePath,
                      requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     try {
       requestParser.parsePartOfARequest(buffer);
@@ -55,14 +56,8 @@ namespace {
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
           printRequestInfo(parsedRequestInfo.second);
-          auto fullPathToTheFile = mainCatalogFullPath + '/' + std::get<2>(parsedRequestInfo.second);
 
-          if (!isFileContainedWithinGivenDirectory(mainCatalogFullPath, fullPathToTheFile)) {
-            incorrectRequestAnswer(msgSock);
-            return false;
-          }
-
-          if (!correctRequestAnswer(msgSock, mainCatalogFullPath, parsedRequestInfo.second,
+          if (!correctRequestAnswer(msgSock, mainCatalogAbsolutePath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
             return false;
           }
@@ -81,16 +76,16 @@ namespace {
     return true;
   }
 
-  void contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogFullPath,
+  void contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogAbsolutePath,
                          requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
       if (len < 0) {
-        syserr("reading from client socket");
+        return;
       } else {
         std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
 
-        if (!parseReadInfo(buffer, requestParser, mainCatalogFullPath, resourcesToAcquireWithCorrelatedServers)) {
+        if (!parseReadInfo(buffer, requestParser, mainCatalogAbsolutePath, resourcesToAcquireWithCorrelatedServers)) {
           return;
         }
       }
