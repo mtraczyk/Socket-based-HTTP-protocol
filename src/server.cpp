@@ -21,20 +21,6 @@ namespace {
   socklen_t clientAddressLen;
   ssize_t len;
 
-  void convertToAbsolutePath(std::string &pathString) noexcept {
-    using namespace std::filesystem;
-
-    path path(pathString);
-    if (path.is_relative()) {
-      std::string currentPath = current_path();
-      if (!pathString.empty() && pathString[0] != '/') {
-        pathString = currentPath + '/' + pathString;
-      } else {
-        pathString = currentPath + pathString;
-      }
-    }
-  }
-
   void printRequestInfo(HTTPRequestParser::requestInfo requestInfo) {
     std::cout << "REQUEST TYPE: ";
     if (std::get<0>(requestInfo) == HTTPRequestParser::requestGET) {
@@ -106,7 +92,7 @@ namespace {
   }
 }
 
-void start_server(std::string mainCatalog, std::string const &correlatedServers, uint32_t portNum) {
+void startServer(std::string mainCatalog, std::string const &correlatedServers, uint32_t portNum) {
   requestData::correlatedServersInfoMap resourcesToAcquireWithCorrelatedServers;
   getResourcesFromAFile(correlatedServers, resourcesToAcquireWithCorrelatedServers);
   convertToAbsolutePath(mainCatalog);

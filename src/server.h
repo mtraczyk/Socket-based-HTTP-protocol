@@ -5,6 +5,10 @@
 
 constexpr static uint32_t standardPortNum = 8080;
 
-void start_server(std::string, std::string const &, uint32_t portNum = standardPortNum);
+/*
+ * First string is a files' catalog directory, the second is a correlated servers file,
+ * the third one is a port number of the server.
+ */
+void startServer(std::string, std::string const &, uint32_t portNum = standardPortNum);
 
 #endif /* SERWER_H */

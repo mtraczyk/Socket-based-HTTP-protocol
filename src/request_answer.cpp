@@ -43,19 +43,16 @@ void serverErrorAnswer(int32_t msgSock) noexcept {
 
 }
 
-bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogFullPath,
+bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolutePath,
                           requestData::requestInfo const &parsedRequestInfo,
                           requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
   std::vector<uint8_t> bytes;
-  std::string path = mainCatalogFullPath;
-
-  if (std::get<2>(parsedRequestInfo) != "/") {
-    path += std::get<2>(parsedRequestInfo);
-  }
+  std::string path = mainCatalogAbsolutePath;
+  path += std::get<2>(parsedRequestInfo);
 
   if (checkWhetherGivenPathExists(path)) {
     if (checkWhetherAccessToAPathIsAcquired(path) &&
-        getApplicationOctetStreamRepresentationOfAFile(mainCatalogFullPath, bytes)) {
+        getApplicationOctetStreamRepresentationOfAFile(mainCatalogAbsolutePath, bytes)) {
       sendAnswerForFileFoundWithinGivenCatalog(msgSock, std::get<0>(parsedRequestInfo), bytes);
 
       return std::get<1>(parsedRequestInfo) != HTTPRequestParser::connectionClose;

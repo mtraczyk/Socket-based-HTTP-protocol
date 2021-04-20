@@ -31,7 +31,7 @@ class HTTPRequestParser {
     std::string currentLine;
     std::string nextPartOfARequest;
     std::string resourcePath;
-    uint32_t nextPartOfARequestsIndexPosition = 0;
+    int32_t nextPartOfARequestsIndexPosition = 0;
     uint8_t requestType = noRequest;
     uint8_t connection = connectionDefault;
     bool lineParsed = false;

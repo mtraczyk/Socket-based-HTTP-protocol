@@ -9,7 +9,7 @@ namespace HTTPRequestPatterns {
   regex requestLineGET("(GET)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
   regex requestLineHEAD("(HEAD)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
   regex headerConnectionClose("(Connection):(\\s)*(close)(\\s)*");
-  regex contentLength("(Content-Length):(\\s)*(0)(\\s)*");
+  regex contentLength("(Content-Length):(\\s)*(0)+(\\s)*");
 }
 
 void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
@@ -51,7 +51,7 @@ void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
   nextPartOfARequest += requestPart;
   int32_t positionOfCRLF = nextPartOfARequest.find("\r\n", nextPartOfARequestsIndexPosition);
 
-  if (positionOfCRLF == std::string::npos) {
+  if (positionOfCRLF == (int32_t) std::string::npos) {
     lineParsed = false;
     if (nextPartOfARequest[nextPartOfARequest.size() - 1] != '\r') {
       prepareForParsingNextLine();

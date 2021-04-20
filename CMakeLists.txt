@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 project(jnp1FifthTask)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_FLAGS "-g -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra")
+
 
 #Add the google test subdirectory
 add_subdirectory(/Users/mac/Desktop/projectsInC++/zadanie1SIK/googletest)
@@ -21,7 +24,7 @@ set(SOURCE_FILES
         src/server.h
         src/server.cpp
         src/err.h
-        src/err.cpp
+        src/err.c
         src/request_answer.h
         src/request_answer.cpp
         src/main.cpp
@@ -29,7 +32,7 @@ set(SOURCE_FILES
 
 set(SOURCE_FILES2
         src/err.h
-        src/err.cpp
+        src/err.c
         src/echo-client.cpp
         )
 

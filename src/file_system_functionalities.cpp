@@ -6,11 +6,19 @@
 #include <sstream>
 
 using correlatedServersInfoMap = std::unordered_map<std::string, std::pair<std::string, std::string>>;
+using namespace std::filesystem;
 
 namespace {
-  auto readBytes(std::istream &is, std::vector<uint8_t> &bytes) -> std::istream & {
+  inline auto readBytes(std::istream &is, std::vector<uint8_t> &bytes) -> std::istream & {
     return is.read(&reinterpret_cast<char &>(bytes[0]), bytes.size());
   }
+
+  inline path normalizedPath(path const &p) {
+    auto r = p.lexically_normal();
+
+    return r;
+  }
+
 }
 
 bool checkWhetherGivenPathExists(std::string const &path) {
@@ -59,4 +67,25 @@ bool getApplicationOctetStreamRepresentationOfAFile(std::string const &path, std
   fs.seekg(0);
 
   return !not readBytes(fs, bytes);
+}
+
+bool isDirectory(std::string const &path) {
+  return std::filesystem::is_directory(path);
+}
+
+bool isFileContainedWithinGivenDirectory(std::string const &directory, std::string const &file) {
+  auto b = normalizedPath(directory);
+  auto s = normalizedPath(file).parent_path();
+  auto m = std::mismatch(b.begin(), b.end(),
+                         s.begin(), s.end());
+
+  return m.first == b.end();
+}
+
+void convertToAbsolutePath(std::string &pathString) noexcept {
+  std::filesystem::path path(pathString);
+  if (path.is_relative()) {
+    std::string currentPath = std::filesystem::current_path();
+    pathString = currentPath + '/' + pathString;
+  }
 }

@@ -1,8 +1,8 @@
-#include <cerrno>
-#include <cstdio>
-#include <cstdlib>
-#include <cstdarg>
-#include <cstring>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
 #include "err.h"
 
 void syserr(const char *fmt, ...) {
