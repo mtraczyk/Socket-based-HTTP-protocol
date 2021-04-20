@@ -55,8 +55,7 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
                           requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
   auto const &pathFromRequest = std::get<2>(parsedRequestInfo);
   std::vector<uint8_t> bytes;
-  std::string path = mainCatalogAbsolutePath;
-  path += "/" + pathFromRequest;
+  std::string path = mainCatalogAbsolutePath + "/" + pathFromRequest;
 
   if (!isFileContainedWithinGivenDirectory(mainCatalogAbsolutePath, path)) {
     if (!sendAnswerForNotFoundFile(msgSock)) {
@@ -67,7 +66,7 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
 
   if (checkWhetherGivenPathExists(path)) {
     if (checkWhetherAccessToAPathIsAcquired(path) &&
-        getApplicationOctetStreamRepresentationOfAFile(mainCatalogAbsolutePath, bytes)) {
+        getApplicationOctetStreamRepresentationOfAFile(path, bytes)) {
       if (!sendAnswerForFileFoundWithinGivenCatalog(msgSock, std::get<0>(parsedRequestInfo), bytes)) {
         return false;
       }
