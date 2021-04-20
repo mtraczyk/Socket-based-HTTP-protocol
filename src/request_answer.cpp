@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 namespace {
-  bool writeMessageToADescriptor(int32_t msgSock, std::string const &message) {
+  inline bool writeMessageToADescriptor(int32_t msgSock, std::string const &message) {
     return write(msgSock, message.c_str(), message.size()) >= 0;
   }
 
@@ -24,35 +24,44 @@ namespace {
     return writeMessageToADescriptor(msgSock, answer);
   }
 
-  bool sendAnswerForFileFoundWithCorrelatedServers(int32_t msgSock) {
-    return true;
+  bool sendAnswerForFileFoundWithCorrelatedServers(int32_t msgSock, std::string const &pathFromRequest,
+                                                   std::pair<std::string, std::string> const &correlatedServersAddress) {
+    std::string answer = "HTTP/1.1 302 file found found within correlated servers\r\n";
+    answer += "Location: http://" + correlatedServersAddress.first + ":" +
+              correlatedServersAddress.second + pathFromRequest + "\r\n\r\n";
+
+    return writeMessageToADescriptor(msgSock, answer);
   }
 
   bool sendAnswerForNotFoundFile(int32_t msgSock) {
-    return true;
+    std::string answer = "HTTP/1.1 404 file not found\r\n\r\n";
+
+    return writeMessageToADescriptor(msgSock, answer);
   }
 }
 
 void incorrectRequestAnswer(int32_t msgSock) noexcept {
-
+  std::string answer = "HTTP/1.1 400 incorrect request format\r\n\r\n";
+  writeMessageToADescriptor(msgSock, answer);
 }
 
 void serverErrorAnswer(int32_t msgSock) noexcept {
-
+  std::string answer = "HTTP/1.1 500 server error answer\r\n\r\n";
+  writeMessageToADescriptor(msgSock, answer);
 }
 
 bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolutePath,
                           requestData::requestInfo const &parsedRequestInfo,
                           requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
+  auto const &pathFromRequest = std::get<2>(parsedRequestInfo);
   std::vector<uint8_t> bytes;
   std::string path = mainCatalogAbsolutePath;
-  path += "/" + std::get<2>(parsedRequestInfo);
+  path += "/" + pathFromRequest;
 
   if (!isFileContainedWithinGivenDirectory(mainCatalogAbsolutePath, path)) {
     if (!sendAnswerForNotFoundFile(msgSock)) {
       return false;
     }
-
     return std::get<1>(parsedRequestInfo) != HTTPRequestParser::connectionClose;
   }
 
@@ -66,13 +75,13 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
       return std::get<1>(parsedRequestInfo) != HTTPRequestParser::connectionClose;
     } else {
       serverErrorAnswer(msgSock);
-
       return false;
     }
   }
 
-  if (resourcesToAcquireWithCorrelatedServers.find(path) != resourcesToAcquireWithCorrelatedServers.end()) {
-    if (!sendAnswerForFileFoundWithCorrelatedServers(msgSock)) {
+  if (resourcesToAcquireWithCorrelatedServers.find(pathFromRequest) != resourcesToAcquireWithCorrelatedServers.end()) {
+    auto const &correlatedServersAddress = resourcesToAcquireWithCorrelatedServers.find(pathFromRequest)->second;
+    if (!sendAnswerForFileFoundWithCorrelatedServers(msgSock, pathFromRequest, correlatedServersAddress)) {
       return false;
     }
   } else {
