@@ -31,7 +31,7 @@ namespace {
     }
     std::cout << std::endl;
 
-    if (std::get<1>(requestInfo) == HTTPRequestParser::connectionDefault) {
+    if (std::get<1>(requestInfo) == HTTPRequestParser::connectionKeepAlive) {
       std::cout << "CONNECTION: DEFAULT" << " ";
     } else if (std::get<1>(requestInfo) == HTTPRequestParser::connectionClose) {
       std::cout << "CONNECTION: CLOSE" << " ";

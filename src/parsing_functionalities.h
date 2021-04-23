@@ -7,15 +7,20 @@
 class HTTPRequestParser {
   public:
     // It is used to store info in the form of RequestType, connection, path in the request.
-    using requestInfo = std::tuple<uint8_t, uint8_t, std::string>;
+    using parserCodesType = uint8_t;
+    using errorCodeType = uint16_t;
+    using requestInfo = std::tuple<parserCodesType, parserCodesType, std::string>;
 
-    constexpr static uint8_t noRequest = 0;
-    constexpr static uint8_t requestGET = 1;
-    constexpr static uint8_t requestHEAD = 2;
-    constexpr static uint8_t connectionDefault = 0;
-    constexpr static uint8_t connectionKeepAlive = 0;
-    constexpr static uint8_t connectionClose = 1;
-    constexpr static uint8_t sizeOfCRLFBlock = 2;
+    constexpr static parserCodesType noRequest = 0;
+    constexpr static parserCodesType requestGET = 1;
+    constexpr static parserCodesType requestHEAD = 2;
+    constexpr static parserCodesType connectionKeepAlive = 0;
+    constexpr static parserCodesType connectionClose = 1;
+    constexpr static parserCodesType sizeOfCRLFBlock = 2;
+    constexpr static parserCodesType lengthOfGETString = 3;
+    constexpr static errorCodeType noError = 0;
+    constexpr static errorCodeType wrongFormat = 400;
+    constexpr static errorCodeType unsupportedFunctionalityError = 501;
 
     HTTPRequestParser() = default;
 
@@ -40,7 +45,7 @@ class HTTPRequestParser {
     ~HTTPRequestParser() = default;
   private:
     // Used to set info about a correctly parsed request line.
-    friend void getInfoAboutParsedLine(HTTPRequestParser *, uint8_t) noexcept;
+    friend void getInfoAboutParsedLine(HTTPRequestParser *, parserCodesType) noexcept;
 
     // Used to process a fully parsed line.
     friend void processAParsedLine(HTTPRequestParser *);
@@ -50,14 +55,15 @@ class HTTPRequestParser {
     std::string currentLine;
     std::string nextPartOfARequest;
     std::string resourcePath;
-    int32_t nextPartOfARequestsIndexPosition = 0;
-    uint8_t requestType = noRequest;
-    uint8_t connection = connectionDefault;
+    uint64_t nextPartOfARequestsIndexPosition = 0;
+    errorCodeType errorType = noError;
+    parserCodesType requestType = noRequest;
+    parserCodesType connection = connectionKeepAlive;
     bool lineParsed = false;
     bool errorOccurred = false;
     bool requestParsed = false;
     bool contentLengthHeaderOccurred = false;
-    requestInfo finalRequestInfo = {noRequest, connectionDefault, ""};
+    requestInfo finalRequestInfo = {noRequest, connectionKeepAlive, ""};
 };
 
 

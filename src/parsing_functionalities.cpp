@@ -6,10 +6,41 @@ constexpr static uint32_t firstIndexOfAString = 0;
 namespace HTTPRequestPatterns {
   using std::regex;
 
-  regex requestLineGET("(GET)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
-  regex requestLineHEAD("(HEAD)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
-  regex headerConnectionClose("(Connection):(\\s)*(close)(\\s)*");
+  regex supportedRequestLine("(GET|HEAD)\\s/[a-zA-Z0-9.-/]*\\s(HTTP/1.1)");
+  regex unsupportedRequestLine(R"([a-zA-Z0-9.-/\s]+\s/[a-zA-Z0-9.-/]*\s(HTTP/1.1))");
+  regex headerConnection("(Connection):(\\s)*(close|keep-alive)(\\s)*");
   regex contentLength("(Content-Length):(\\s)*(0)+(\\s)*");
+  regex unsupportedHeader(R"([a-zA-Z0-9.-/\s]+:(\s)*([a-zA-Z0-9.-/\s])+(\s)*)");
+}
+
+namespace {
+  HTTPRequestParser::parserCodesType getRequestType(std::string const &requestLine) {
+    if (requestLine.substr(firstIndexOfAString, HTTPRequestParser::lengthOfGETString) == "GET") {
+      return HTTPRequestParser::requestGET;
+    }
+
+    return HTTPRequestParser::requestHEAD;
+  }
+
+  HTTPRequestParser::parserCodesType getConnectionType(std::string const &connectionHeaderLine) {
+    auto index = connectionHeaderLine.find(':') + 1; // OWS starting index.
+    std::string connectionTypeString;
+
+    while (connectionHeaderLine[index] == ' ') {
+      index++;
+    }
+
+    while (std::isalpha(connectionHeaderLine[index]) && index < connectionHeaderLine.size()) {
+      connectionTypeString += connectionHeaderLine[index];
+      index++;
+    }
+
+    if (connectionHeaderLine == "close") {
+      return HTTPRequestParser::connectionClose;
+    }
+
+    return HTTPRequestParser::connectionKeepAlive;
+  }
 }
 
 void getInfoAboutParsedLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
@@ -19,29 +50,33 @@ void getInfoAboutParsedLine(HTTPRequestParser *requestParserInstance, uint8_t re
     requestParserInstance->requestType = requestType;
     requestParserInstance->resourcePath.clear();
 
-    for (uint32_t i = requestParserInstance->currentLine.find('/'); requestParserInstance->currentLine[i] != ' '; i++) {
-      requestParserInstance->resourcePath += requestParserInstance->currentLine[i];
+    auto const &currentLine = requestParserInstance->currentLine;
+    for (auto i = currentLine.find('/'); currentLine[i] != ' '; i++) {
+      requestParserInstance->resourcePath += currentLine[i];
     }
   }
 }
 
 void processAParsedLine(HTTPRequestParser *requestParserInstance) {
   requestParserInstance->lineParsed = true;
+  auto const &currentLine = requestParserInstance->currentLine;
 
-  if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLineGET)) {
-    getInfoAboutParsedLine(requestParserInstance, HTTPRequestParser::requestGET);
-  } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLineHEAD)) {
-    getInfoAboutParsedLine(requestParserInstance, HTTPRequestParser::requestHEAD);
-  } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::headerConnectionClose)) {
+  if (std::regex_match(currentLine, HTTPRequestPatterns::supportedRequestLine)) {
+    // Check if it is a GET or HEAD request.
+    auto requestType = getRequestType(currentLine);
+    getInfoAboutParsedLine(requestParserInstance, requestType);
+  } else if (std::regex_match(currentLine, HTTPRequestPatterns::headerConnection)) {
     requestParserInstance->errorOccurred =
       ((requestParserInstance->connection) ? true : requestParserInstance->errorOccurred);
-    requestParserInstance->connection = HTTPRequestParser::connectionClose;
-  } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::contentLength)) {
+    requestParserInstance->connection = getConnectionType(currentLine);
+  } else if (std::regex_match(currentLine, HTTPRequestPatterns::contentLength)) {
     requestParserInstance->errorOccurred =
       ((requestParserInstance->contentLengthHeaderOccurred) ? true : requestParserInstance->errorOccurred);
     requestParserInstance->contentLengthHeaderOccurred = true;
-  } else {
+  } else if (std::regex_match(currentLine, HTTPRequestPatterns::unsupportedRequestLine)
+             || std::regex_match(currentLine, HTTPRequestPatterns::unsupportedHeader)) {
     requestParserInstance->errorOccurred = true;
+    requestParserInstance->errorType = HTTPRequestParser::unsupportedFunctionalityError;
   }
 
   requestParserInstance->currentLine.clear();
@@ -49,9 +84,9 @@ void processAParsedLine(HTTPRequestParser *requestParserInstance) {
 
 void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
   nextPartOfARequest += requestPart;
-  int32_t positionOfCRLF = nextPartOfARequest.find("\r\n", nextPartOfARequestsIndexPosition);
+  auto positionOfCRLF = nextPartOfARequest.find("\r\n", nextPartOfARequestsIndexPosition);
 
-  if (positionOfCRLF == (int32_t) std::string::npos) {
+  if (positionOfCRLF == std::string::npos) {
     lineParsed = false;
     if (nextPartOfARequest[nextPartOfARequest.size() - 1] != '\r') {
       prepareForParsingNextLine();
@@ -103,7 +138,8 @@ void HTTPRequestParser::cleanAfterParsingWholeRequest() noexcept {
   requestParsed = false;
   contentLengthHeaderOccurred = false;
   requestType = noRequest;
-  connection = connectionDefault;
+  connection = connectionKeepAlive;
+  errorType = noError;
 }
 
 void HTTPRequestParser::reset() noexcept {
@@ -116,7 +152,8 @@ void HTTPRequestParser::reset() noexcept {
   contentLengthHeaderOccurred = false;
   nextPartOfARequestsIndexPosition = firstIndexOfAString;
   requestType = noRequest;
-  connection = connectionDefault;
+  connection = connectionKeepAlive;
+  errorType = noError;
 }
 
 
