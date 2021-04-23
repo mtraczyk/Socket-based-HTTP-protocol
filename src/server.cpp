@@ -49,16 +49,13 @@ namespace {
 
       while (requestParser.isALineParsed()) {
         if (requestParser.hasAnErrorOccurred()) {
-          incorrectRequestAnswer(msgSock);
+          incorrectRequestAnswer(msgSock, requestParser.getErrorType());
           return false;
         }
 
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
-#ifndef NDEBUG
-          printRequestInfo(parsedRequestInfo.second);
-#endif
-
+          //    printRequestInfo(parsedRequestInfo.second);
           if (!correctRequestAnswer(msgSock, mainCatalogAbsolutePath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
             return false;
@@ -82,10 +79,10 @@ namespace {
                          requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
-      if (len < 0) {
+      if (len <= 0) {
         return;
       } else {
-        std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
+        //    std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
 
         if (!parseReadInfo(buffer, requestParser, mainCatalogAbsolutePath, resourcesToAcquireWithCorrelatedServers)) {
           return;
@@ -130,19 +127,17 @@ void startServer(std::string mainCatalog, std::string const &correlatedServers, 
     // get client connection from the socket
     msgSock = accept(sock, (struct sockaddr *) &clientAddress, &clientAddressLen);
     if (msgSock < 0) {
-      syserr("accept");
+      continue;
     }
 
     std::cout << "starting connection" << std::endl;
     std::cout << "IP address is: " << inet_ntoa(clientAddress.sin_addr) << std::endl;
-    std::cout << "port is: " << (int32_t) ntohs(clientAddress.sin_port) << std::endl << std::endl;
+    std::cout << "port is: " << (size_t) ntohs(clientAddress.sin_port) << std::endl << std::endl;
     memset(buffer, 0, sizeof(buffer));
     contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers);
 
     std::cout << "ending connection" << std::endl << std::endl;
-    if (close(msgSock) < 0) {
-      syserr("close");
-    }
+    void(close(msgSock));
     requestParser.reset();
   }
 }

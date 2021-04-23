@@ -79,11 +79,10 @@ bool isDirectory(std::string const &path) {
 
 bool isFileContainedWithinGivenDirectory(std::string const &directory, std::string const &file) {
   // It's done in such a manner because paths "something/" and something are the same.
-  auto b = normalizedPath(normalizedPath(directory).generic_string() + "/");
-  auto s = normalizedPath(normalizedPath(file).parent_path().generic_string() + "/");
+  auto b = normalizedPath(normalizedPath(directory).generic_string() + "/").generic_string();
+  auto s = normalizedPath(normalizedPath(file).parent_path().generic_string() + "/").generic_string();
   // Check whether file's path is a prefix of directory's path.
-  auto m = std::mismatch(b.begin(), b.end(),
-                         s.begin(), s.end());
+  auto m = std::mismatch(b.begin(), b.end(), s.begin(), s.end());
 
   return m.first == b.end();
 }

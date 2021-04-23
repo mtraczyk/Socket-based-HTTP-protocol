@@ -17,9 +17,9 @@ class HTTPRequestParser {
     constexpr static parserCodesType connectionKeepAlive = 0;
     constexpr static parserCodesType connectionClose = 1;
     constexpr static parserCodesType sizeOfCRLFBlock = 2;
-    constexpr static parserCodesType lengthOfGETString = 3;
     constexpr static errorCodeType noError = 0;
-    constexpr static errorCodeType wrongFormat = 400;
+    constexpr static errorCodeType wrongFormatError = 400;
+    constexpr static errorCodeType wrongPathError = 404;
     constexpr static errorCodeType unsupportedFunctionalityError = 501;
 
     HTTPRequestParser() = default;
@@ -32,6 +32,8 @@ class HTTPRequestParser {
 
     // Returns true if an error in a request occurred.
     bool hasAnErrorOccurred() const noexcept;
+
+    errorCodeType getErrorType() const noexcept;
 
     // Returns info of a fully parsed request.
     std::pair<bool, requestInfo> getFullyParsedRequest() noexcept;
@@ -50,12 +52,14 @@ class HTTPRequestParser {
     // Used to process a fully parsed line.
     friend void processAParsedLine(HTTPRequestParser *);
 
+    friend void setWrongFormatError(HTTPRequestParser *) noexcept;
+
     void prepareForParsingNextLine() noexcept;
 
     std::string currentLine;
     std::string nextPartOfARequest;
     std::string resourcePath;
-    uint64_t nextPartOfARequestsIndexPosition = 0;
+    size_t nextPartOfARequestsIndexPosition = 0;
     errorCodeType errorType = noError;
     parserCodesType requestType = noRequest;
     parserCodesType connection = connectionKeepAlive;
@@ -63,6 +67,7 @@ class HTTPRequestParser {
     bool errorOccurred = false;
     bool requestParsed = false;
     bool contentLengthHeaderOccurred = false;
+    bool connectionHeaderOccurred = false;
     requestInfo finalRequestInfo = {noRequest, connectionKeepAlive, ""};
 };
 
