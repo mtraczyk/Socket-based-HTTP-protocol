@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 
 namespace {
-  constexpr static uint32_t bufferSize = 2000;
+  constexpr static uint32_t bufferSize = 4096;
   constexpr static uint32_t queueLength = 5;
 
   int32_t sock, msgSock;
@@ -55,7 +55,9 @@ namespace {
 
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
+#ifndef NDEBUG
           printRequestInfo(parsedRequestInfo.second);
+#endif
 
           if (!correctRequestAnswer(msgSock, mainCatalogAbsolutePath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
@@ -67,7 +69,7 @@ namespace {
         requestParser.parsePartOfARequest("");
       }
     } catch (std::regex_error const &e) {
-      std::cout << "regex_error caught:" << e.what() << std::endl;
+      std::cerr << "regex_error caught:" << e.what() << std::endl;
       serverErrorAnswer(msgSock);
 
       return false;

@@ -12,7 +12,7 @@ namespace HTTPRequestPatterns {
   regex contentLength("(Content-Length):(\\s)*(0)+(\\s)*");
 }
 
-void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
+void getInfoAboutParsedLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
   if (requestParserInstance->requestType) {
     requestParserInstance->errorOccurred = true;
   } else {
@@ -25,13 +25,13 @@ void parseRequestLine(HTTPRequestParser *requestParserInstance, uint8_t requestT
   }
 }
 
-void lineIsParsed(HTTPRequestParser *requestParserInstance) {
+void processAParsedLine(HTTPRequestParser *requestParserInstance) {
   requestParserInstance->lineParsed = true;
 
   if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLineGET)) {
-    parseRequestLine(requestParserInstance, HTTPRequestParser::requestGET);
+    getInfoAboutParsedLine(requestParserInstance, HTTPRequestParser::requestGET);
   } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::requestLineHEAD)) {
-    parseRequestLine(requestParserInstance, HTTPRequestParser::requestHEAD);
+    getInfoAboutParsedLine(requestParserInstance, HTTPRequestParser::requestHEAD);
   } else if (std::regex_match(requestParserInstance->currentLine, HTTPRequestPatterns::headerConnectionClose)) {
     requestParserInstance->errorOccurred =
       ((requestParserInstance->connection) ? true : requestParserInstance->errorOccurred);
@@ -72,7 +72,7 @@ void HTTPRequestParser::parsePartOfARequest(std::string const &requestPart) {
 
     currentLine += nextPartOfARequest.substr(nextPartOfARequestsIndexPosition,
                                              positionOfCRLF - nextPartOfARequestsIndexPosition);
-    lineIsParsed(this);
+    processAParsedLine(this);
     nextPartOfARequestsIndexPosition = positionOfCRLF + sizeOfCRLFBlock;
   }
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(jnp1FifthTask)
+project(zadanie1SIK)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_FLAGS "-g -Wall -Wextra")
