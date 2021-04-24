@@ -9,18 +9,23 @@ namespace {
     auto numberOfBytesYetToBeWritten = message.size();
     auto messageAsACString = message.c_str();
     auto len = write(msgSock, messageAsACString, numberOfBytesYetToBeWritten);
+    if (len <= 0) {
+      return false;
+    }
     auto numberOfBytesAlreadyWritten = len;
+    numberOfBytesYetToBeWritten -= len;
 
     // Size of the message might be bigger than the buffer's size.
     while (numberOfBytesYetToBeWritten != 0) {
+      len = write(msgSock, &messageAsACString[numberOfBytesAlreadyWritten], numberOfBytesYetToBeWritten);
       if (len < 0) {
         return false;
       }
 
-      numberOfBytesYetToBeWritten -= len;
-      len = write(msgSock, &messageAsACString[numberOfBytesAlreadyWritten], numberOfBytesYetToBeWritten);
       numberOfBytesAlreadyWritten += len;
+      numberOfBytesYetToBeWritten -= len;
     }
+
 
     return true;
   }

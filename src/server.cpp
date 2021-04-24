@@ -60,23 +60,21 @@ namespace {
     return true;
   }
 
-  bool contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogAbsolutePath,
+  void contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogAbsolutePath,
                          requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
       if (len <= 0) {
         // The connection was finished by the client or an error connected with read function occurred.
-        return false;
+        return;
       } else {
         if (!parseReadInfo(buffer, requestParser, mainCatalogAbsolutePath, resourcesToAcquireWithCorrelatedServers)) {
           // An error occurred that implies the need of closing the connection.
-          return true;
+          return;
         }
       }
       memset(buffer, 0, len);
     } while (len > 0);
-
-    return false;
   }
 }
 
@@ -109,6 +107,7 @@ void startServer(std::string mainCatalog, std::string const &correlatedServers, 
     syserr("listen");
   }
 
+  signal(SIGPIPE, SIG_IGN); // Ignoring SIGPIPE.
   std::cout << "accepting client connections on port: " << ntohs(serverAddress.sin_port) << std::endl << std::endl;
   HTTPRequestParser requestParser = HTTPRequestParser();
   for (;;) {
@@ -126,11 +125,10 @@ void startServer(std::string mainCatalog, std::string const &correlatedServers, 
     std::cout << "port is: " << (size_t) ntohs(clientAddress.sin_port) << std::endl << std::endl;
     memset(buffer, 0, sizeof(buffer));
 
-    if (contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers)) {
-      void(close(msgSock));
-    }
+    contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers);
 
     std::cout << "ending connection" << std::endl << std::endl;
     requestParser.reset();
+    void(close(msgSock));
   }
 }

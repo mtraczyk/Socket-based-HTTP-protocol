@@ -59,9 +59,6 @@ int main(int argc, char *argv[]) {
 
   uint32_t sum = 0;
   do {
-    (void) close(sock);
-    return 0;
-
     memset(buffer, 0, sizeof(buffer));
     rcv_len = read(sock, buffer, sizeof(buffer) - 1);
     if (rcv_len < 0) {
