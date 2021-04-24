@@ -21,6 +21,8 @@ namespace {
   socklen_t clientAddressLen;
   ssize_t len;
 
+#warning Remember to get rid of it.
+
   void printRequestInfo(HTTPRequestParser::requestInfo requestInfo) {
     std::cout << "HTTP/1.1 REQUEST RECEIVED" << std::endl;
     std::cout << "REQUEST TYPE: ";
@@ -45,9 +47,11 @@ namespace {
                      std::string const &mainCatalogAbsolutePath,
                      requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     try {
+      // Parse part of a request.
       requestParser.parsePartOfARequest(buffer);
 
       while (requestParser.isALineParsed()) {
+        // Parse lines as long as there is a need to do that.
         if (requestParser.hasAnErrorOccurred()) {
           incorrectRequestAnswer(msgSock, requestParser.getErrorType());
           return false;
@@ -55,6 +59,7 @@ namespace {
 
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
+#warning Remember to get rid of it.
           //    printRequestInfo(parsedRequestInfo.second);
           if (!correctRequestAnswer(msgSock, mainCatalogAbsolutePath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
@@ -63,9 +68,13 @@ namespace {
           requestParser.cleanAfterParsingWholeRequest();
         }
 
+        /* With one part of a request, a lot of lines could have been read.
+         * All of them need to be processed, that is why the function is being invoked with an empty argument.
+         */
         requestParser.parsePartOfARequest("");
       }
     } catch (std::regex_error const &e) {
+      // Regex may throw errors. They need to be caught.
       std::cerr << "regex_error caught:" << e.what() << std::endl;
       serverErrorAnswer(msgSock);
 
@@ -80,11 +89,14 @@ namespace {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
       if (len <= 0) {
+        // The connection was finished by the client or an error connected with read function occurred.
         return;
       } else {
-        //    std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
+#warning Remember to get rid of it.
+        //  std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
 
         if (!parseReadInfo(buffer, requestParser, mainCatalogAbsolutePath, resourcesToAcquireWithCorrelatedServers)) {
+          // An error occurred that implies the need of closing the connection.
           return;
         }
       }
@@ -94,7 +106,9 @@ namespace {
 }
 
 void startServer(std::string mainCatalog, std::string const &correlatedServers, uint32_t portNum) {
+  // Map used in order to cache data from correlated servers's file.
   requestData::correlatedServersInfoMap resourcesToAcquireWithCorrelatedServers;
+  // Caches info from correlated servers.
   getResourcesFromAFile(correlatedServers, resourcesToAcquireWithCorrelatedServers);
   convertToAbsolutePath(mainCatalog);
 
@@ -127,6 +141,7 @@ void startServer(std::string mainCatalog, std::string const &correlatedServers, 
     // get client connection from the socket
     msgSock = accept(sock, (struct sockaddr *) &clientAddress, &clientAddressLen);
     if (msgSock < 0) {
+      // There is no need to shut down the server, as a result of a connection failure with a certain client.
       continue;
     }
 

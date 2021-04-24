@@ -11,6 +11,7 @@ namespace {
     auto len = write(msgSock, messageAsACString, numberOfBytesYetToBeWritten);
     auto numberOfBytesAlreadyWritten = len;
 
+    // Size of the message might be bigger than the buffer's size.
     while (numberOfBytesYetToBeWritten != 0) {
       numberOfBytesYetToBeWritten -= len;
       len = write(msgSock, &messageAsACString[numberOfBytesAlreadyWritten], numberOfBytesYetToBeWritten);
@@ -23,6 +24,7 @@ namespace {
     return true;
   }
 
+  // Auxiliary function which checks if the connection close header needs to be added to the server's response.
   inline void checkConnectionStatus(std::string &answer, HTTPRequestParser::parserCodesType connection) {
     if (connection == HTTPRequestParser::connectionClose) {
       answer += "Connection: close\r\n";
@@ -94,20 +96,29 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
 
   try {
     if (!isFileContainedWithinGivenDirectory(mainCatalogAbsolutePath, path) || isDirectory(path)) {
+      /* If a path represents a directory not a file or a file is not contained within directory
+       * Send response with 404 error code.
+       */
       if (!sendAnswerForNotFoundFile(msgSock, connection)) {
+        // An error occurred and the connection needs to be closed.
         return false;
       }
+      // If the connection close header appeared then the connection has to be closed.
       return connection != HTTPRequestParser::connectionClose;
     }
 
     if (checkWhetherGivenPathExists(path)) {
+      // The path is a file, it is contained within the directory and exists.
       if (checkWhetherAccessToAPathIsAcquired(path) &&
           getApplicationOctetStreamRepresentationOfAFile(path, bytes)) {
         if (!sendAnswerForFileFoundWithinGivenCatalog(msgSock, requestType, connection, bytes)) {
+          // Connection has to be closed.
           return false;
         }
+        // If the connection close header appeared then the connection has to be closed.
         return connection != HTTPRequestParser::connectionClose;
       } else {
+        // The file can't be accessed or reading from it didn't finish successfully.
         serverErrorAnswer(msgSock);
         return false;
       }
@@ -115,9 +126,11 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
 
     if (resourcesToAcquireWithCorrelatedServers.find(pathFromRequest) !=
         resourcesToAcquireWithCorrelatedServers.end()) {
+      // Resource is present within the data cached from the correlated servers' file.
       auto const &correlatedServersAddress = resourcesToAcquireWithCorrelatedServers.find(pathFromRequest)->second;
       if (!sendAnswerForFileFoundWithCorrelatedServers(msgSock, pathFromRequest, connection,
                                                        correlatedServersAddress)) {
+        // Connection has to be closed.
         return false;
       }
     } else {
@@ -126,11 +139,13 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
       }
     }
   } catch (std::exception const &e) {
+    // std::filesystem may throw errors, for instance when the path is too long.
     std::cerr << "error caught:" << e.what() << std::endl;
     serverErrorAnswer(msgSock);
 
     return false;
   }
 
+  // If the connection close header appeared then the connection has to be closed.
   return connection != HTTPRequestParser::connectionClose;
 }
