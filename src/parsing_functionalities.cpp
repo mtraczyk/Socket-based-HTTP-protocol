@@ -6,30 +6,27 @@ constexpr static size_t firstIndexOfAString = 0;
 namespace HTTPRequestPatterns {
   using std::regex;
 
-  /* !! I interpret OWS as an arbitrary white space character.
-   That was the case during any other project at this university. !! */
-
   // Regex for a request line that is supported by this server.
-  regex supportedRequestLine(R"((GET|HEAD)\s\/[a-zA-Z0-9.\-\/]*\s(HTTP\/1\.1))");
+  regex supportedRequestLine(R"((GET|HEAD) (\/.*[^ ]|\/) (HTTP\/1\.1))");
 
   /* Regex for unsupported request lines such as "GeT / HTTP/1.1" or "asd12^& file.txt HTTP/1.1"
    * Error code 501 should be return when such a line is encountered.
    */
-  regex unsupportedRequestLine(R"(^(?!GET\s|HEAD\s)\S+\s\S*\s(HTTP\/1\.1))");
+  regex unsupportedRequestLine(R"(^(?!GET |HEAD )(.+) .* (HTTP\/1\.1))");
 
   // Regex for a supported connection header, IT IS CASE SENSITIVE.
-  regex headerConnection(R"((C|c)(onnection):(\s)*(close|keep\-alive)(\s)*)");
+  regex headerConnection(R"((C|c)(onnection):( )*(close|keep\-alive)( )*)");
 
   /* Regex for a supported Content-Length header, IT IS CASE SENSITIVE. The field value can only equal to zero.
    * I interpret "0000..." where "..." implies arbitrary number of zero digits as zero.
    */
-  regex contentLength(R"((Content\-Length):(\s)*(0)+(\s)*)");
+  regex contentLength(R"((Content\-Length):( )*(0)+( )*)");
 
   // A field value of a proper Content-Length header must equal to zero in this server.
-  regex incorrectContentLength(R"((Content\-Length):(\s)*.*(\s)*)");
+  regex incorrectContentLength(R"((Content\-Length):.*)");
 
   // Regex for any other header of a correct format.
-  regex unsupportedHeader(R"(.+:(\s)*.*(\s)*)");
+  regex unsupportedHeader(R"(.+:.*)");
 }
 
 namespace {
@@ -84,8 +81,9 @@ void getInfoAboutParsedLine(HTTPRequestParser *requestParserInstance, uint8_t re
     requestParserInstance->resourcePath.clear();
 
     auto const &currentLine = requestParserInstance->currentLine;
+    auto lastIndex = currentLine.size() - std::string("HTTP/1.1").size() - 1;
     // Every path must start with a '/' character.
-    for (auto i = currentLine.find('/'); !isblank(currentLine[i]); i++) {
+    for (auto i = currentLine.find('/'); i < lastIndex; i++) {
       requestParserInstance->resourcePath += currentLine[i];
     }
   }
