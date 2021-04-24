@@ -17,8 +17,10 @@ CPPFLAGS = $(INC_FLAGS) -MMD -MP
 CFLAGS = -Wall -Wextra -std=c11
 CXX_FLAGS = -Wall -Wextra -std=c++17
 
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+LIBS = -lstdc++fs
+
+$(TARGET_EXEC): $(OBJS)
+	$(CXX) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 # c source
 $(BUILD_DIR)/%.c.o: %.c
@@ -28,7 +30,7 @@ $(BUILD_DIR)/%.c.o: %.c
 # c++ source
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(MKDIR_P) $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXX_FLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXX_FLAGS) -c $< -o $@ $(LIBS)
 
 
 .PHONY: clean
