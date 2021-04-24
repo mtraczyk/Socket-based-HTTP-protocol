@@ -12,10 +12,10 @@ namespace HTTPRequestPatterns {
   // Regex for a request line that is supported by this server.
   regex supportedRequestLine(R"((GET|HEAD)\s\/[a-zA-Z0-9.\-\/]*\s(HTTP\/1\.1))");
 
-  /* Regex for unsupported request lines such as "GeT / HTTP/1.1" or "asd12^& /file.txt HTTP/1.1"
+  /* Regex for unsupported request lines such as "GeT / HTTP/1.1" or "asd12^& file.txt HTTP/1.1"
    * Error code 501 should be return when such a line is encountered.
    */
-  regex unsupportedRequestLine(R"(\S+\s/[a-zA-Z0-9.\-\/]*\s(HTTP\/1\.1))");
+  regex unsupportedRequestLine(R"(^(?!GET\s|HEAD\s)\S+\s\S*\s(HTTP\/1\.1))");
 
   // Regex for a supported connection header, IT IS CASE SENSITIVE.
   regex headerConnection(R"((C|c)(onnection):(\s)*(close|keep\-alive)(\s)*)");

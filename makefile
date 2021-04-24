@@ -37,6 +37,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 
 clean:
 	$(RM) -r $(BUILD_DIR)
+	rm serwer
 
 -include $(DEPS)
 

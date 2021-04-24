@@ -21,28 +21,6 @@ namespace {
   socklen_t clientAddressLen;
   ssize_t len;
 
-#warning Remember to get rid of it.
-
-  void printRequestInfo(HTTPRequestParser::requestInfo requestInfo) {
-    std::cout << "HTTP/1.1 REQUEST RECEIVED" << std::endl;
-    std::cout << "REQUEST TYPE: ";
-    if (std::get<0>(requestInfo) == HTTPRequestParser::requestGET) {
-      std::cout << "GET" << " ";
-    } else if (std::get<0>(requestInfo) == HTTPRequestParser::requestHEAD) {
-      std::cout << "HEAD" << " ";
-    }
-    std::cout << std::endl;
-
-    if (std::get<1>(requestInfo) == HTTPRequestParser::connectionKeepAlive) {
-      std::cout << "CONNECTION: DEFAULT" << " ";
-    } else if (std::get<1>(requestInfo) == HTTPRequestParser::connectionClose) {
-      std::cout << "CONNECTION: CLOSE" << " ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "RESOURCE PATH: " << std::get<2>(requestInfo) << std::endl << std::endl;
-  }
-
   bool parseReadInfo(std::string const &buffer, HTTPRequestParser &requestParser,
                      std::string const &mainCatalogAbsolutePath,
                      requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
@@ -59,8 +37,6 @@ namespace {
 
         const auto parsedRequestInfo = requestParser.getFullyParsedRequest();
         if (parsedRequestInfo.first) {
-#warning Remember to get rid of it.
-          //    printRequestInfo(parsedRequestInfo.second);
           if (!correctRequestAnswer(msgSock, mainCatalogAbsolutePath, parsedRequestInfo.second,
                                     resourcesToAcquireWithCorrelatedServers)) {
             return false;
@@ -92,9 +68,6 @@ namespace {
         // The connection was finished by the client or an error connected with read function occurred.
         return;
       } else {
-#warning Remember to get rid of it.
-        //  std::cout << "read from socket: " << len << " bytes:" << std::endl << buffer << std::endl;
-
         if (!parseReadInfo(buffer, requestParser, mainCatalogAbsolutePath, resourcesToAcquireWithCorrelatedServers)) {
           // An error occurred that implies the need of closing the connection.
           return;
