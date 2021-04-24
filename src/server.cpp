@@ -60,21 +60,23 @@ namespace {
     return true;
   }
 
-  void contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogAbsolutePath,
+  bool contactWithClient(char *buffer, HTTPRequestParser &requestParser, std::string const &mainCatalogAbsolutePath,
                          requestData::correlatedServersInfoMap const &resourcesToAcquireWithCorrelatedServers) {
     do {
       len = read(msgSock, buffer, sizeof(buffer));
       if (len <= 0) {
         // The connection was finished by the client or an error connected with read function occurred.
-        return;
+        return false;
       } else {
         if (!parseReadInfo(buffer, requestParser, mainCatalogAbsolutePath, resourcesToAcquireWithCorrelatedServers)) {
           // An error occurred that implies the need of closing the connection.
-          return;
+          return true;
         }
       }
       memset(buffer, 0, len);
     } while (len > 0);
+
+    return false;
   }
 }
 
@@ -115,6 +117,7 @@ void startServer(std::string mainCatalog, std::string const &correlatedServers, 
     msgSock = accept(sock, (struct sockaddr *) &clientAddress, &clientAddressLen);
     if (msgSock < 0) {
       // There is no need to shut down the server, as a result of a connection failure with a certain client.
+      requestParser.reset();
       continue;
     }
 
@@ -122,10 +125,12 @@ void startServer(std::string mainCatalog, std::string const &correlatedServers, 
     std::cout << "IP address is: " << inet_ntoa(clientAddress.sin_addr) << std::endl;
     std::cout << "port is: " << (size_t) ntohs(clientAddress.sin_port) << std::endl << std::endl;
     memset(buffer, 0, sizeof(buffer));
-    contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers);
+
+    if (contactWithClient(buffer, requestParser, mainCatalog, resourcesToAcquireWithCorrelatedServers)) {
+      void(close(msgSock));
+    }
 
     std::cout << "ending connection" << std::endl << std::endl;
-    void(close(msgSock));
     requestParser.reset();
   }
 }

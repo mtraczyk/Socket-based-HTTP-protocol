@@ -13,11 +13,12 @@ namespace {
 
     // Size of the message might be bigger than the buffer's size.
     while (numberOfBytesYetToBeWritten != 0) {
-      numberOfBytesYetToBeWritten -= len;
-      len = write(msgSock, &messageAsACString[numberOfBytesAlreadyWritten], numberOfBytesYetToBeWritten);
       if (len < 0) {
         return false;
       }
+
+      numberOfBytesYetToBeWritten -= len;
+      len = write(msgSock, &messageAsACString[numberOfBytesAlreadyWritten], numberOfBytesYetToBeWritten);
       numberOfBytesAlreadyWritten += len;
     }
 
@@ -141,9 +142,9 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
   } catch (std::exception const &e) {
     // std::filesystem may throw errors, for instance when the path is too long.
     std::cerr << "error caught:" << e.what() << std::endl;
-    serverErrorAnswer(msgSock);
+    sendAnswerForNotFoundFile(msgSock, connection);
 
-    return false;
+    return connection != HTTPRequestParser::connectionClose;
   }
 
   // If the connection close header appeared then the connection has to be closed.
