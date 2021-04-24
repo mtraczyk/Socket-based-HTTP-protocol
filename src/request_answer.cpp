@@ -4,7 +4,6 @@
 
 namespace {
   using byte = uint8_t;
-  constexpr static auto maxSizeOfAPath = (1 << 13);
 
   inline bool writeMessageToADescriptor(int32_t msgSock, std::string const &message) {
     auto numberOfBytesYetToBeWritten = message.size();
@@ -93,40 +92,44 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
   std::vector<byte> bytes;
   std::string path = mainCatalogAbsolutePath + "/" + pathFromRequest;
 
-  if (mainCatalogAbsolutePath.size() > maxSizeOfAPath || pathFromRequest.size() > maxSizeOfAPath) {
-    sendAnswerForNotFoundFile(msgSock, HTTPRequestParser::connectionKeepAlive);
-    return false;
-  }
-
-  if (!isFileContainedWithinGivenDirectory(mainCatalogAbsolutePath, path) || isDirectory(path)) {
-    if (!sendAnswerForNotFoundFile(msgSock, connection)) {
-      return false;
-    }
-    return connection != HTTPRequestParser::connectionClose;
-  }
-
-  if (checkWhetherGivenPathExists(path)) {
-    if (checkWhetherAccessToAPathIsAcquired(path) &&
-        getApplicationOctetStreamRepresentationOfAFile(path, bytes)) {
-      if (!sendAnswerForFileFoundWithinGivenCatalog(msgSock, requestType, connection, bytes)) {
+  try {
+    if (!isFileContainedWithinGivenDirectory(mainCatalogAbsolutePath, path) || isDirectory(path)) {
+      if (!sendAnswerForNotFoundFile(msgSock, connection)) {
         return false;
       }
       return connection != HTTPRequestParser::connectionClose;
-    } else {
-      serverErrorAnswer(msgSock);
-      return false;
     }
-  }
 
-  if (resourcesToAcquireWithCorrelatedServers.find(pathFromRequest) != resourcesToAcquireWithCorrelatedServers.end()) {
-    auto const &correlatedServersAddress = resourcesToAcquireWithCorrelatedServers.find(pathFromRequest)->second;
-    if (!sendAnswerForFileFoundWithCorrelatedServers(msgSock, pathFromRequest, connection, correlatedServersAddress)) {
-      return false;
+    if (checkWhetherGivenPathExists(path)) {
+      if (checkWhetherAccessToAPathIsAcquired(path) &&
+          getApplicationOctetStreamRepresentationOfAFile(path, bytes)) {
+        if (!sendAnswerForFileFoundWithinGivenCatalog(msgSock, requestType, connection, bytes)) {
+          return false;
+        }
+        return connection != HTTPRequestParser::connectionClose;
+      } else {
+        serverErrorAnswer(msgSock);
+        return false;
+      }
     }
-  } else {
-    if (!sendAnswerForNotFoundFile(msgSock, connection)) {
-      return false;
+
+    if (resourcesToAcquireWithCorrelatedServers.find(pathFromRequest) !=
+        resourcesToAcquireWithCorrelatedServers.end()) {
+      auto const &correlatedServersAddress = resourcesToAcquireWithCorrelatedServers.find(pathFromRequest)->second;
+      if (!sendAnswerForFileFoundWithCorrelatedServers(msgSock, pathFromRequest, connection,
+                                                       correlatedServersAddress)) {
+        return false;
+      }
+    } else {
+      if (!sendAnswerForNotFoundFile(msgSock, connection)) {
+        return false;
+      }
     }
+  } catch (std::exception const &e) {
+    std::cerr << "error caught:" << e.what() << std::endl;
+    serverErrorAnswer(msgSock);
+
+    return false;
   }
 
   return connection != HTTPRequestParser::connectionClose;

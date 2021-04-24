@@ -27,7 +27,7 @@ set(SOURCE_FILES
         src/err.c
         src/request_answer.h
         src/request_answer.cpp
-        src/test.cpp
+        src/main.cpp
         )
 
 set(SOURCE_FILES2

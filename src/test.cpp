@@ -17,8 +17,6 @@ TEST (SquareTest /*test suite name*/, PosZeroNeg /*test name*/) {
   std::string request = "HEAD /hello/nic.txt HTTP/1.1\r\nConnection:     close      \r\nContent-Length:   0\r\n\r\nGET /hello/nic2.txt HTTP/1.1\r\nContent-Length:   0\r\n\r\n";
   a.parsePartOfARequest(request);
 
-  std::cout << (1<<13) << std::endl;
-
   while (a.isALineParsed()) {
     a.parsePartOfARequest("");
     if (a.getFullyParsedRequest().first) {
