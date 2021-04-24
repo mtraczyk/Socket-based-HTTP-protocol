@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "err.h"
+#include "../src/err.h"
 
 #define BUFFER_SIZE 2000
 

@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "parsing_functionalities.h"
+#include "../src/parsing_functionalities.h"
 #include <iostream>
 #include <filesystem>
 

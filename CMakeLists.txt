@@ -33,7 +33,7 @@ set(SOURCE_FILES
 set(SOURCE_FILES2
         src/err.h
         src/err.c
-        src/echo-client.cpp
+        additional_src/echo-client.cpp
         )
 
 # Wskazujemy plik wykonywalny.
