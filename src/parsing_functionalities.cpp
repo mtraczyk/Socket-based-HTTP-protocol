@@ -6,16 +6,31 @@ constexpr static size_t firstIndexOfAString = 0;
 namespace HTTPRequestPatterns {
   using std::regex;
 
+  // Regex for a request line that is supported by this server.
   regex supportedRequestLine(R"((GET|HEAD)\s\/[a-zA-Z0-9.\-\/]*\s(HTTP\/1\.1))");
-  regex unsupportedRequestLine(R"([^\s]+\s/[a-zA-Z0-9.\-\/]*\s(HTTP\/1\.1))");
+
+  /* Regex for unsupported request lines such as "GeT / HTTP/1.1" or "asd12^& /file.txt HTTP/1.1"
+   * Error code 501 should be return when such a line is encountered.
+   */
+  regex unsupportedRequestLine(R"(\S+\s/[a-zA-Z0-9.\-\/]*\s(HTTP\/1\.1))");
+
+  // Regex for a supported connection header, IT IS CASE SENSITIVE.
   regex headerConnection(R"((C|c)(onnection):(\s)*(close|keep\-alive)(\s)*)");
+
+  /* Regex for a supported Content-Length header, IT IS CASE SENSITIVE. The field value can only equal to zero.
+   * I interpret "0000..." where "..." implies arbitrary number of zero digits as zero.
+   */
   regex contentLength(R"((Content\-Length):(\s)*(0)+(\s)*)");
+
+  // A field value of a proper Content-Length header must equal to zero in this server.
   regex incorrectContentLength(R"((Content\-Length):(\s)*.*(\s)*)");
+
+  // Regex for any other header of a correct format.
   regex unsupportedHeader(R"(.+:(\s)*.*(\s)*)");
 }
 
 namespace {
-  constexpr size_t lengthOfGETString = 3;
+  constexpr size_t lengthOfGETString = 3; // Length of "GET".
 
   HTTPRequestParser::parserCodesType getRequestType(std::string const &requestLine) {
     if (requestLine.substr(firstIndexOfAString, lengthOfGETString) == "GET") {
@@ -25,6 +40,7 @@ namespace {
     return HTTPRequestParser::requestHEAD;
   }
 
+  // Auxiliary function used to obtain connection type from a proper connection header.
   HTTPRequestParser::parserCodesType getConnectionType(std::string const &connectionHeaderLine) {
     auto index = connectionHeaderLine.find(':') + 1; // OWS starting index.
     std::string connectionTypeString;

@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  uint32_t sum = 0;
   do {
     memset(buffer, 0, sizeof(buffer));
     rcv_len = read(sock, buffer, sizeof(buffer) - 1);
@@ -64,7 +65,10 @@ int main(int argc, char *argv[]) {
       syserr("read");
     }
     printf("read from socket: %zd bytes:\n%s\n", rcv_len, buffer);
+    sum += rcv_len;
   } while (rcv_len > 0);
+
+  printf("%d\n", sum);
 
   (void) close(sock); // socket would be closed anyway when the program ends
 
