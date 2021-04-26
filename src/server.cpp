@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 namespace {
   constexpr static uint32_t bufferSize = 4096;
