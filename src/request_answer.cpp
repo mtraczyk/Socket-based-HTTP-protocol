@@ -26,6 +26,7 @@ namespace {
       numberOfBytesYetToBeWritten -= len;
     }
 
+    std::cout << "number of bytes sent: " << numberOfBytesAlreadyWritten << std::endl;
 
     return true;
   }
@@ -124,9 +125,11 @@ bool correctRequestAnswer(int32_t msgSock, std::string const &mainCatalogAbsolut
         // If the connection close header appeared then the connection has to be closed.
         return connection != HTTPRequestParser::connectionClose;
       } else {
-        // The file can't be accessed or reading from it didn't finish successfully.
-        serverErrorAnswer(msgSock);
-        return false;
+        if (checkWhetherAccessToAPathIsAcquired(path)) {
+          // The file can be accessed but reading from it didn't finish successfully.
+          serverErrorAnswer(msgSock);
+          return false;
+        }
       }
     }
 

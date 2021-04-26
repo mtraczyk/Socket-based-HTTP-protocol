@@ -1,7 +1,6 @@
 #include "parsing_functionalities.h"
+#include "err.h"
 #include <string>
-
-constexpr static size_t firstIndexOfAString = 0;
 
 namespace HTTPRequestPatterns {
   using std::regex;
@@ -15,22 +14,24 @@ namespace HTTPRequestPatterns {
   regex unsupportedRequestLine(R"(^(?!GET |HEAD )(.+) .* (HTTP\/1\.1))");
 
   // Regex for a supported connection header, IT IS CASE SENSITIVE.
-  regex headerConnection(R"((C|c)(onnection):( )*(close|keep\-alive)( )*)");
+  regex headerConnection(R"((connection):( )*(close|keep\-alive)( )*)");
 
   /* Regex for a supported Content-Length header, IT IS CASE SENSITIVE. The field value can only equal to zero.
    * I interpret "0000..." where "..." implies arbitrary number of zero digits as zero.
    */
-  regex contentLength(R"((Content\-Length):( )*(0)+( )*)");
+  regex contentLength(R"((content\-length):( )*(0)+( )*)");
 
   // A field value of a proper Content-Length header must equal to zero in this server.
-  regex incorrectContentLength(R"((Content\-Length):.*)");
+  regex incorrectContentLength(R"((content\-length):.*)");
 
   // Regex for any other header of a correct format.
   regex unsupportedHeader(R"(.+:.*)");
 }
 
 namespace {
-  constexpr size_t lengthOfGETString = 3; // Length of "GET".
+  constexpr static size_t firstIndexOfAString = 0;
+  constexpr static uint32_t decimalBasis = 10;
+  constexpr static size_t lengthOfGETString = 3; // Length of "GET".
 
   /* Auxiliary function used to obtain type of a request from a correct request line.
    * There are only two supported request types: "GET" and "HEAD".
@@ -69,6 +70,17 @@ namespace {
 
     return HTTPRequestParser::connectionKeepAlive;
   }
+
+  inline void fieldNameToLowerCase(std::string &line) {
+    // In supported headers after field name there is a colon character.
+    auto indexOfColon = line.find(':');
+
+    if (indexOfColon != std::string::npos) {
+      for (auto i = firstIndexOfAString; i != indexOfColon; i++) {
+        line[i] = tolower(line[i]);
+      }
+    }
+  }
 }
 
 void getInfoAboutParsedLine(HTTPRequestParser *requestParserInstance, uint8_t requestType) noexcept {
@@ -92,34 +104,39 @@ void getInfoAboutParsedLine(HTTPRequestParser *requestParserInstance, uint8_t re
 void processAParsedLine(HTTPRequestParser *requestParserInstance) {
   requestParserInstance->lineParsed = true; // Line was correctly parsed.
   bool hasRequestOccurred = (requestParserInstance->requestType != HTTPRequestParser::noRequest);
-  auto const &currentLine = requestParserInstance->currentLine;
+  auto &currentLine = requestParserInstance->currentLine;
 
   if (std::regex_match(currentLine, HTTPRequestPatterns::supportedRequestLine)) {
     auto requestType = getRequestType(currentLine); // Check if it is a GET or HEAD request.
     getInfoAboutParsedLine(requestParserInstance, requestType);
-  } else if (std::regex_match(currentLine, HTTPRequestPatterns::headerConnection) && hasRequestOccurred) {
-    // If the same supported header occurred twice then it is an error 400.
-    requestParserInstance->errorOccurred = requestParserInstance->connectionHeaderOccurred;
-    setWrongFormatError(requestParserInstance); // Set the error if it needs to be set.
-    requestParserInstance->connection = getConnectionType(currentLine);
-    requestParserInstance->connectionHeaderOccurred = true;
-  } else if (std::regex_match(currentLine, HTTPRequestPatterns::contentLength) && hasRequestOccurred) {
-    // If the same supported header occurred twice then it is an error 400.
-    requestParserInstance->errorOccurred = requestParserInstance->contentLengthHeaderOccurred;
-    setWrongFormatError(requestParserInstance); // Set the error if it needs to be set.
-    requestParserInstance->contentLengthHeaderOccurred = true;
   } else if (std::regex_match(currentLine, HTTPRequestPatterns::unsupportedRequestLine)) {
     // Unsupported functionality.
     requestParserInstance->errorOccurred = true;
     requestParserInstance->errorType = HTTPRequestParser::unsupportedFunctionalityError;
-  } else if (std::regex_match(currentLine, HTTPRequestPatterns::incorrectContentLength)) {
-    // Content-Length's value field doesn't equal zero.
-    requestParserInstance->errorOccurred = true;
-    requestParserInstance->errorType = HTTPRequestParser::wrongFormatError;
-  } else if (!std::regex_match(currentLine, HTTPRequestPatterns::unsupportedHeader)) {
-    // Unsupported headers are ignored but the currentLine is of a different format.
-    requestParserInstance->errorOccurred = true;
-    requestParserInstance->errorType = HTTPRequestParser::wrongFormatError;
+  } else {
+    // Field names in headers are case insensitive. So we can treat them as if there were all lowercase.
+    fieldNameToLowerCase(currentLine);
+
+    if (std::regex_match(currentLine, HTTPRequestPatterns::headerConnection) && hasRequestOccurred) {
+      // If the same supported header occurred twice then it is an error 400.
+      requestParserInstance->errorOccurred = requestParserInstance->connectionHeaderOccurred;
+      setWrongFormatError(requestParserInstance); // Set the error if it needs to be set.
+      requestParserInstance->connection = getConnectionType(currentLine);
+      requestParserInstance->connectionHeaderOccurred = true;
+    } else if (std::regex_match(currentLine, HTTPRequestPatterns::contentLength) && hasRequestOccurred) {
+      // If the same supported header occurred twice then it is an error 400.
+      requestParserInstance->errorOccurred = requestParserInstance->contentLengthHeaderOccurred;
+      setWrongFormatError(requestParserInstance); // Set the error if it needs to be set.
+      requestParserInstance->contentLengthHeaderOccurred = true;
+    } else if (std::regex_match(currentLine, HTTPRequestPatterns::incorrectContentLength)) {
+      // Content-Length's value field doesn't equal zero.
+      requestParserInstance->errorOccurred = true;
+      requestParserInstance->errorType = HTTPRequestParser::wrongFormatError;
+    } else if (!std::regex_match(currentLine, HTTPRequestPatterns::unsupportedHeader)) {
+      // Unsupported headers are ignored but the currentLine is of a different format.
+      requestParserInstance->errorOccurred = true;
+      requestParserInstance->errorType = HTTPRequestParser::wrongFormatError;
+    }
   }
 
   requestParserInstance->currentLine.clear(); // Line was parsed, needs to be cleared.
@@ -221,6 +238,26 @@ void HTTPRequestParser::reset() noexcept {
   requestType = noRequest;
   connection = connectionKeepAlive;
   errorType = noError;
+}
+
+uint16_t portFromArg(const char *arg) {
+  constexpr int max_port = std::numeric_limits<uint16_t>::max();
+  int port = 0;
+  const char *s = arg;
+
+  for (; *s != '\0'; ++s) {
+    char c = *s;
+    if (!('0' <= c && c <= '9')) {
+      fatal("Invalid port number.");
+    }
+    port *= decimalBasis;
+    port += c - '0';
+    if (port > max_port) {
+      fatal("Invalid port number.");
+    }
+  }
+
+  return port;
 }
 
 

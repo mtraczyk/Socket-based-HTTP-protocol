@@ -71,5 +71,7 @@ class HTTPRequestParser {
     requestInfo finalRequestInfo = {noRequest, connectionKeepAlive, ""};
 };
 
+uint16_t portFromArg(const char *arg);
+
 
 #endif /* PARSING_FUNCTIONALITIES_H */
